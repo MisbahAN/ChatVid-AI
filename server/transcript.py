@@ -1,64 +1,69 @@
-# transcript.py
+# This script extracts the transcript from a YouTube video URL by:
+# 1. Parsing the video ID from the given URL
+# 2. Fetching the auto-generated transcript using youtube-transcript-api
+# 3. Returning the transcript as a list of text + timestamp segments
+
+
+
+# 1. Imports
+#    - youtube_transcript_api: fetches YouTube transcript via video ID
+#    - urllib.parse: extracts query parameters like video ID from URL
 
 from youtube_transcript_api import YouTubeTranscriptApi
 from urllib.parse import urlparse, parse_qs
 
 
+
+# 2. fetch_transcript(video_url)
+#    - Extracts video ID from full YouTube URL
+#    - Fetches the transcript via API
+#    - Returns list of dicts: {text, start, duration}
+
 def fetch_transcript(video_url: str) -> list[dict]:
     """
     Extracts transcript segments (text + timestamps) from a YouTube video.
     Returns a list of dicts with keys: 'text', 'start', and 'duration'.
-    
+
     Args:
-        video_url (str): Full YouTube video URL.
+        video_url (str): Full YouTube video URL
 
     Returns:
-        List[Dict]: Transcript segments, or empty list if failed.
+        List[Dict]: Transcript segments, or empty list if failed
     """
-    
-    # ───── Step 1: Parse the YouTube URL ─────
+
+    # ─── Step 1: Parse the YouTube URL ───
     # Example input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=43s"
     parsed_url = urlparse(video_url)
 
-    # Example parsed result:
-    # ParseResult(
-    #   scheme='https',
-    #   netloc='www.youtube.com',
-    #   path='/watch',
-    #   params='',
-    #   query='v=dQw4w9WgXcQ&t=43s',
-    #   fragment=''
-    # )
+    # ─── Step 2: Extract the video ID ───
+    video_id_list = parse_qs(parsed_url.query).get("v")  # Extracts the 'v' parameter (video ID) as a list
 
-    # ───── Step 2: Extract the video ID ─────
-    video_id_list = parse_qs(parsed_url.query).get("v") # Converts query string to dictionary and Gets the 'v' parameter (video ID)
-    
     if not video_id_list:
         raise ValueError("Invalid YouTube URL provided. 'v' parameter not found.")
 
-    video_id = video_id_list[0]  # Extract the string from the list (e.g., 'dQw4w9WgXcQ')
+    video_id = video_id_list[0]  # Get video ID from list (e.g., 'dQw4w9WgXcQ')
     print("🎬 Fetching transcript for video ID:", video_id)
 
-    # ───── Step 3: Fetch transcript from YouTube ─────
+    # ─── Step 3: Fetch transcript using API ───
     try:
         transcript = YouTubeTranscriptApi.get_transcript(video_id)
-        return transcript  # List of {'text', 'start', 'duration'}
-    
+        return transcript  # Returns list of {text, start, duration}
+
     except Exception as e:
         print(f"Error fetching transcript: {e}")
         return []
-    
 
 
-# ───── Optional Test Code ─────
-# Uncomment below to test this file directly by running: python server/transcript.py
 
-# test_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # RICKROLL HAHAHA
-# transcript = fetch_transcript(test_url)
-# for segment in transcript[:5]:
-#     print(segment)
+# 3. Optional test block
+#    - Allows you to run this file standalone to test transcript fetching
 
-# # OUTPUT:
+# if __name__ == "__main__":
+#     test_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # RICKROLL 🤡
+#     transcript = fetch_transcript(test_url)
+#     for segment in transcript[:5]:
+#         print(segment)
+
 # 🎬 Fetching transcript for video ID: dQw4w9WgXcQ
 # {'text': '[♪♪♪]', 'start': 1.36, 'duration': 1.68}
 # {'text': "♪ We're no strangers to love ♪", 'start': 18.64, 'duration': 3.24}
