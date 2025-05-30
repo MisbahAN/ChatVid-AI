@@ -3,3 +3,9 @@ uvicorn
 youtube-transcript-api
 google-generativeai
 python-dotenv
+opencv-python
+numpy
+yt-dlp
+ffmpeg-python
+pillow
+scikit-learn

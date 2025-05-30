@@ -50,3 +50,6 @@ out/
 *.sqlite3
 *.json
 tmp/
+
+# Ignore extracted video frames
+server/frames/

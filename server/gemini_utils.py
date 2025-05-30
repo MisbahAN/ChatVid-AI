@@ -3,78 +3,65 @@
 # - Generating timestamped YouTube links
 # - Embedding hyperlinks in Gemini's output
 # - Answering questions using the transcript via Gemini
+# - Embedding images using Gemini multimodal embedding
 
 
 
-# 1. Imports & Configuration
-#    - genai: Gemini API
-#    - dotenv + os: for securely loading the API key
-#    - re: regular expressions for timestamp parsing
+# 1. Imports
+#    - genai: Gemini API access
+#    - dotenv + os: Load Gemini API key from environment
+#    - re: Regex for timestamp hyperlinking
 
 import google.generativeai as genai
 from dotenv import load_dotenv
 import os
 import re
 
-# Load and configure Gemini API key
+
+
+# 2. Load API Key and Configure Gemini
+
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Initialize Gemini model
-model = genai.GenerativeModel("gemini-1.5-pro")
+
+
+# 3. Gemini Model Setup
+#    - Uses multimodal model (supports text + image)
+
+gemini_model = genai.GenerativeModel("gemini-1.5-pro")
 
 
 
-# 2. format_time(seconds)
-#    - Converts float seconds to "mm:ss" string format
+# 4. format_time(seconds)
+#    - Converts float seconds to mm:ss format
 
 def format_time(seconds: float) -> str:
-    """Helper to turn seconds into mm:ss format."""
     minutes = int(seconds // 60)
     secs = int(seconds % 60)
     return f"{minutes:02}:{secs:02}"
 
 
 
-# 3. generate_timestamp_link(video_url, timestamp_str)
-#    - Converts "mm:ss" string into a YouTube time-linked URL
+# 5. generate_timestamp_link(video_url, timestamp_str)
+#    - Converts "mm:ss" timestamp into YouTube link with t= param
 
 def generate_timestamp_link(video_url: str, timestamp_str: str) -> str:
-    """
-    Converts a timestamp string like '02:15' to a YouTube URL with time parameter.
-
-    Args:
-        video_url (str): Original YouTube URL
-        timestamp_str (str): Timestamp in "mm:ss" format
-
-    Returns:
-        str: YouTube URL with t= query param
-    """
     try:
         minutes, seconds = map(int, timestamp_str.split(":"))
         total_seconds = minutes * 60 + seconds
         return f"{video_url}&t={total_seconds}s"
     except Exception as e:
         print("❌ Error creating timestamp link:", e)
-        return video_url  # Fallback to plain link
+        return video_url
 
 
 
-# 4. hyperlink_timestamps_in_text(answer, video_url)
-#    - Finds all "mm:ss" timestamps and turns them into clickable links
+# 6. hyperlink_timestamps_in_text(answer, video_url)
+#    - Finds all mm:ss timestamps in string and replaces them with YouTube hyperlinks
 
 def hyperlink_timestamps_in_text(answer: str, video_url: str) -> str:
-    """
-    Converts all mm:ss timestamps in a string to YouTube hyperlinks.
-
-    Args:
-        answer (str): Text answer containing timestamps
-        video_url (str): Original YouTube URL
-
-    Returns:
-        str: Answer with HTML <a> tags around timestamps
-    """
-    pattern = r"\b(\d{2}):(\d{2})\b"  # Matches strings like "02:33"
+    pattern = r"\b(\d{2}):(\d{2})\b"
 
     def replacer(match):
         ts = match.group(0)
@@ -85,31 +72,16 @@ def hyperlink_timestamps_in_text(answer: str, video_url: str) -> str:
 
 
 
-# 5. answer_question(transcript, question, video_url)
-#    - Builds a Gemini prompt from transcript
-#    - Sends question and receives a timestamped answer
-#    - Converts timestamps to hyperlinks
+# 7. answer_question(transcript, question, video_url)
+#    - Builds context from transcript and asks Gemini to answer user query
+#    - Hyperlinks timestamps in response
 
 def answer_question(transcript: list[dict], question: str, video_url: str) -> str:
-    """
-    Uses Gemini to answer a user's question based on the video transcript.
-
-    Args:
-        transcript (list[dict]): List of transcript segments with 'text', 'start', 'duration'
-        question (str): User's natural language question
-        video_url (str): YouTube video URL to embed timestamps in the answer
-
-    Returns:
-        str: Gemini's answer with timestamp hyperlinks
-    """
-
-    # ─── Step 1: Format transcript as readable context ───
     context = ""
     for item in transcript:
         start_time = format_time(item["start"])
         context += f"[{start_time}] {item['text']}\n"
 
-    # ─── Step 2: Build prompt with question ───
     prompt = f"""
         You are a helpful assistant answering questions about a YouTube video.
         Use only the transcript below. Try to include the timestamp of relevant parts in your answer.
@@ -121,30 +93,55 @@ def answer_question(transcript: list[dict], question: str, video_url: str) -> st
         Answer:
     """
 
-    # ─── Step 3: Query Gemini ───
-    response = model.generate_content(prompt)
+    response = gemini_model.generate_content(prompt)
     answer = response.text.strip()
-
     return hyperlink_timestamps_in_text(answer, video_url)
 
 
 
-# 6. Optional test block
-#    - Lets you run this file directly to test question answering
+# 8. analyze_image(image_path, prompt)
+#    - Sends image + prompt to Gemini and returns text response
 
-if __name__ == "__main__":
-    from transcript import fetch_transcript
+def analyze_image(image_path: str, prompt: str) -> str:
+    try:
+        with open(image_path, "rb") as img_file:
+            image_bytes = img_file.read()
 
-    url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    transcript = fetch_transcript(url)
+        image_part = {
+            "mime_type": "image/jpeg",
+            "data": image_bytes
+        }
 
-    if not transcript:
-        print("❗ No transcript found for this video. Try another one.")
-    else:
-        question = "How many times does he say the phrase 'Never gonna give you up' and what are the time stamps for each time?"
-        answer = answer_question(transcript, question, url)
-        print("\n🧠 Gemini Answer with Hyperlinks:\n")
-        print(answer)
+        response = gemini_model.generate_content(
+            contents=[
+                {"role": "user", "parts": [image_part, {"text": prompt}]}
+            ]
+        )
+
+        return response.text.strip()
+
+    except Exception as e:
+        print(f"❌ Error analyzing {image_path}: {e}")
+        return None
+
+
+
+# 9. Optional Test Block
+#    - Lets you run this file directly to test transcript QA flow
+
+# if __name__ == "__main__":
+#     from transcript import fetch_transcript
+
+#     url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+#     transcript = fetch_transcript(url)
+
+#     if not transcript:
+#         print("❗ No transcript found for this video. Try another one.")
+#     else:
+#         question = "How many times does he say the phrase 'Never gonna give you up' and what are the time stamps for each time?"
+#         answer = answer_question(transcript, question, url)
+#         print("\n🧠 Gemini Answer with Hyperlinks:\n")
+#         print(answer)
 
 # Sample output:
 # 🎬 Fetching transcript for video ID: dQw4w9WgXcQ
