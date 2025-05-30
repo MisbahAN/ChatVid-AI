@@ -22,11 +22,13 @@ import numpy as np
 from pathlib import Path
 from datetime import timedelta
 import subprocess
-from gemini_utils import analyze_image
+from gemini_utils import async_analyze_image
 import shutil
 from sklearn.metrics.pairwise import cosine_similarity
 import google.generativeai as genai
 from dotenv import load_dotenv
+import asyncio
+import httpx
 
 
 
@@ -104,49 +106,51 @@ def extract_frames(video_url: str, interval: int = 5) -> list[dict]:
 # 5. process_all_frames(frame_metadata, prompt)
 #    - Analyzes each frame using Gemini multimodal API
 #    - Adds 'analysis' field to each frame dict
+#    - Also implemented embed_frame_descriptions inside here and deleted the original function 
 
-def process_all_frames(frame_metadata: list[dict], prompt: str) -> list[dict]:
-    print("🔢 Processing all frames using Gemini...")
+# ✅ Now make the main processing async
+async def process_all_frames_async(frame_dir: str):
+    print("🚀 Starting async frame analysis...")
 
-    for frame in frame_metadata:
-        try:
-            analysis = analyze_image(frame["image_path"], prompt)
-            frame["analysis"] = analysis
-        except Exception as e:
-            print(f"❌ Error processing {frame['image_path']}: {e}")
-            frame["analysis"] = None
+    results = []
+    frame_files = sorted(Path(frame_dir).glob("*.jpg"))
 
-    print("✅ Finished processing all frames.")
-    return frame_metadata
+    async with httpx.AsyncClient(timeout=60) as client:
+        tasks = [
+            async_analyze_image(str(frame), client)
+            for frame in frame_files
+        ]
 
+        # Run all requests in parallel
+        descriptions = await asyncio.gather(*tasks)
 
+        # Embed each description and track frame timestamps
+        for frame_file, desc in zip(frame_files, descriptions):
+            timestamp_sec = int(frame_file.stem.split("_")[-1])
 
-# 6. embed_frame_descriptions(frame_metadata)
-#    - Uses Gemini text embedding model to embed each frame's description
-#    - Adds 'embedding' field to each frame
-
-def embed_frame_descriptions(frame_metadata: list[dict]) -> list[dict]:
-    print("🔡 Embedding frame descriptions...")
-    for frame in frame_metadata:
-        analysis = frame.get("analysis", "")
-        if analysis:
             try:
                 response = genai.embed_content(
                     model="models/embedding-001",
-                    content=analysis,
+                    content=desc,
                     task_type="RETRIEVAL_QUERY"
                 )
-                frame["embedding"] = response["embedding"]
+                embedding = response["embedding"]
             except Exception as e:
-                print(f"❌ Failed to embed description at {frame['timestamp']}: {e}")
-                frame["embedding"] = None
-        else:
-            frame["embedding"] = None
-    return frame_metadata
+                print(f"❌ Failed to embed description at frame {frame_file.name}: {e}")
+                embedding = None
+
+            results.append({
+                "timestamp": timestamp_sec,
+                "description": desc,
+                "embedding": embedding # Already a Python list
+            })
+
+    print("✅ Async frame analysis complete.")
+    return results
 
 
 
-# 7. semantic_search(query, frames)
+# 6. semantic_search(query, frames)
 #    - Embeds the query text
 #    - Computes cosine similarity to each frame embedding
 #    - Returns the best-matching frame (with score and analysis)
@@ -180,23 +184,31 @@ def semantic_search(query: str, frames: list[dict]) -> dict:
         return {
             "timestamp": best_frame["timestamp"],
             "score": best_score,
-            "analysis": best_frame["analysis"]
+            "description": best_frame["description"]
         }
     else:
         return {}
 
 
 
-# 8. Optional Test Block
-#    - Tests full pipeline: frame extraction → image analysis → embedding → semantic search
+# 7. Optional Test Block
+#    - Tests full pipeline: YouTube video ➝ Extract frames ➝ Async analyze + embed ➝ Semantic search
 
 if __name__ == "__main__":
-    url = "https://www.youtube.com/watch?v=B5FMk3MLTDI"
-    frames = extract_frames(url, interval=5)
-    frames = process_all_frames(frames, prompt="Describe the scene in this frame as clearly and thoroughly as possible.")
-    frames = embed_frame_descriptions(frames)
+    import sys
 
-    result = semantic_search("When is the volcanic moon shown?", frames)
+    url = "https://www.youtube.com/watch?v=6Xf858oNEak"  # Or any short video
 
-    print("\n📍 Best Match:")
-    print(result)
+    # Step 1: Extract frames every 5 seconds
+    extract_frames(url, interval=5)
+
+    # Step 2: Run async frame analysis
+    async def run_pipeline():
+        frames = await process_all_frames_async("server/frames")
+        result = semantic_search("When is the frosting being put on the cake?", frames)
+
+        print("\n📍 Best Match:")
+        print(result)
+
+    # Run the async pipeline
+    asyncio.run(run_pipeline())

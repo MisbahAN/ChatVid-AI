@@ -16,6 +16,8 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import os
 import re
+import httpx
+import base64
 
 
 
@@ -102,27 +104,43 @@ def answer_question(transcript: list[dict], question: str, video_url: str) -> st
 # 8. analyze_image(image_path, prompt)
 #    - Sends image + prompt to Gemini and returns text response
 
-def analyze_image(image_path: str, prompt: str) -> str:
-    try:
-        with open(image_path, "rb") as img_file:
-            image_bytes = img_file.read()
+# ✅ Async version of analyze_image()
 
-        image_part = {
-            "mime_type": "image/jpeg",
-            "data": image_bytes
-        }
+async def async_analyze_image(frame_path: str, client: httpx.AsyncClient) -> str:
+    with open(frame_path, "rb") as img_file:
+        image_data = base64.b64encode(img_file.read()).decode("utf-8")  # ✅ encode to base64
 
-        response = gemini_model.generate_content(
-            contents=[
-                {"role": "user", "parts": [image_part, {"text": prompt}]}
+    response = await client.post(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+        params={"key": os.getenv("GEMINI_API_KEY")},
+        json={
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "inlineData": {
+                                "mimeType": "image/jpeg",
+                                "data": image_data  # ✅ base64 encoded string
+                            }
+                        },
+                        {"text": "Describe this frame briefly."}
+                    ]
+                }
             ]
-        )
+        },
+        headers={"Content-Type": "application/json"}
+    )
 
-        return response.text.strip()
+    if response.status_code != 200:
+        print(f"⚠️ Error analyzing frame {frame_path}: {response.text}")
+        return "Error"
 
-    except Exception as e:
-        print(f"❌ Error analyzing {image_path}: {e}")
-        return None
+    result = response.json()
+    try:
+        return result["candidates"][0]["content"]["parts"][0]["text"]
+    except:
+        print(f"❌ Failed to parse Gemini response: {result}")
+        return "Error"
 
 
 
