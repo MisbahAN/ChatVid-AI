@@ -11,10 +11,10 @@
 #    - os, shutil, subprocess: filesystem and shell utilities
 #    - cv2: OpenCV for video frame extraction
 #    - numpy: needed for cosine similarity
-#    - Path, timedelta: paths and timestamps
-#    - analyze_image: from gemini_utils
-#    - genai, dotenv: for Gemini embeddings
+#    - Path, timedelta: for saving files and handling timestamps
+#    - gemini_utils: async Gemini image analysis
 #    - sklearn: cosine similarity metric
+#    - genai, dotenv, asyncio, httpx: Gemini config + async HTTP requests
 
 import os
 import cv2
@@ -103,12 +103,11 @@ def extract_frames(video_url: str, interval: int = 5) -> list[dict]:
 
 
 
-# 5. process_all_frames(frame_metadata, prompt)
-#    - Analyzes each frame using Gemini multimodal API
-#    - Adds 'analysis' field to each frame dict
-#    - Also implemented embed_frame_descriptions inside here and deleted the original function 
+# 5. process_all_frames_async(frame_dir)
+#    - Asynchronously analyzes frames using Gemini multimodal API
+#    - Embeds each description and appends timestamp, description, and embedding
+#    - Replaces original frame-by-frame processor and embedding step
 
-# ✅ Now make the main processing async
 async def process_all_frames_async(frame_dir: str):
     print("🚀 Starting async frame analysis...")
 
@@ -121,10 +120,8 @@ async def process_all_frames_async(frame_dir: str):
             for frame in frame_files
         ]
 
-        # Run all requests in parallel
         descriptions = await asyncio.gather(*tasks)
 
-        # Embed each description and track frame timestamps
         for frame_file, desc in zip(frame_files, descriptions):
             timestamp_sec = int(frame_file.stem.split("_")[-1])
 
@@ -142,7 +139,7 @@ async def process_all_frames_async(frame_dir: str):
             results.append({
                 "timestamp": timestamp_sec,
                 "description": desc,
-                "embedding": embedding # Already a Python list
+                "embedding": embedding
             })
 
     print("✅ Async frame analysis complete.")
@@ -151,9 +148,9 @@ async def process_all_frames_async(frame_dir: str):
 
 
 # 6. semantic_search(query, frames)
-#    - Embeds the query text
-#    - Computes cosine similarity to each frame embedding
-#    - Returns the best-matching frame (with score and analysis)
+#    - Embeds the query
+#    - Compares it to all frame embeddings using cosine similarity
+#    - Returns best match with timestamp, score, and description
 
 def semantic_search(query: str, frames: list[dict]) -> dict:
     print(f"🔍 Searching for: {query}")
@@ -194,21 +191,21 @@ def semantic_search(query: str, frames: list[dict]) -> dict:
 # 7. Optional Test Block
 #    - Tests full pipeline: YouTube video ➝ Extract frames ➝ Async analyze + embed ➝ Semantic search
 
-if __name__ == "__main__":
-    import sys
-
-    url = "https://www.youtube.com/watch?v=6Xf858oNEak"  # Or any short video
-
-    # Step 1: Extract frames every 5 seconds
-    extract_frames(url, interval=5)
-
-    # Step 2: Run async frame analysis
-    async def run_pipeline():
-        frames = await process_all_frames_async("server/frames")
-        result = semantic_search("When is the frosting being put on the cake?", frames)
-
-        print("\n📍 Best Match:")
-        print(result)
-
-    # Run the async pipeline
-    asyncio.run(run_pipeline())
+# if __name__ == "__main__":
+#     import sys
+#
+#     url = "https://www.youtube.com/watch?v=6Xf858oNEak"
+#
+#     # Step 1: Extract frames every 5 seconds
+#     extract_frames(url, interval=5)
+#
+#     # Step 2: Run async frame analysis
+#     async def run_pipeline():
+#         frames = await process_all_frames_async("server/frames")
+#         result = semantic_search("When is the frosting being put on the cake?", frames)
+#
+#         print("\n📍 Best Match:")
+#         print(result)
+#
+#     # Run the async pipeline
+#     asyncio.run(run_pipeline())

@@ -11,6 +11,8 @@
 #    - genai: Gemini API access
 #    - dotenv + os: Load Gemini API key from environment
 #    - re: Regex for timestamp hyperlinking
+#    - httpx: Async HTTP client for async Gemini calls
+#    - base64: Image encoding for inline data
 
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -101,14 +103,14 @@ def answer_question(transcript: list[dict], question: str, video_url: str) -> st
 
 
 
-# 8. analyze_image(image_path, prompt)
-#    - Sends image + prompt to Gemini and returns text response
-
-# ✅ Async version of analyze_image()
+# 8. async_analyze_image(frame_path, client)
+#    - Sends image + prompt to Gemini via POST request
+#    - Uses Gemini's v1beta API for async image analysis
+#    - Returns text description from response
 
 async def async_analyze_image(frame_path: str, client: httpx.AsyncClient) -> str:
     with open(frame_path, "rb") as img_file:
-        image_data = base64.b64encode(img_file.read()).decode("utf-8")  # ✅ encode to base64
+        image_data = base64.b64encode(img_file.read()).decode("utf-8")
 
     response = await client.post(
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
@@ -120,7 +122,7 @@ async def async_analyze_image(frame_path: str, client: httpx.AsyncClient) -> str
                         {
                             "inlineData": {
                                 "mimeType": "image/jpeg",
-                                "data": image_data  # ✅ base64 encoded string
+                                "data": image_data
                             }
                         },
                         {"text": "Describe this frame briefly."}
@@ -149,10 +151,10 @@ async def async_analyze_image(frame_path: str, client: httpx.AsyncClient) -> str
 
 # if __name__ == "__main__":
 #     from transcript import fetch_transcript
-
+#
 #     url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 #     transcript = fetch_transcript(url)
-
+#
 #     if not transcript:
 #         print("❗ No transcript found for this video. Try another one.")
 #     else:
@@ -163,14 +165,7 @@ async def async_analyze_image(frame_path: str, client: httpx.AsyncClient) -> str
 
 # Sample output:
 # 🎬 Fetching transcript for video ID: dQw4w9WgXcQ
-
 # 🧠 Gemini Answer with Hyperlinks:
-
-# He says "Never gonna give you up" six times in the video:
-
-# 1. [<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=43s" target="_blank">00:43</a>]
-# 2. [<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=85s" target="_blank">01:25</a>]
-# 3. [<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=102s" target="_blank">01:42</a>]
-# 4. [<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=161s" target="_blank">02:41</a>]
-# 5. [<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=178s" target="_blank">02:58</a>]
-# 6. [<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=195s" target="_blank">03:15</a>]
+# 1. [<a href="...">00:43</a>]
+# 2. [<a href="...">01:25</a>]
+# ...

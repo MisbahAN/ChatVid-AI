@@ -10,3 +10,4 @@ ffmpeg-python
 pillow
 scikit-learn
 httpx
+pydantic
