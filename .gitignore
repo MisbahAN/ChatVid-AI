@@ -1,0 +1,52 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Python virtual environment
+venv/
+env/
+.venv/
+
+# Environment variables
+.env
+.env.*
+
+# macOS system files
+.DS_Store
+
+# VS Code settings
+.vscode/
+
+# Node.js dependencies (frontend)
+node_modules/
+npm-debug.log
+yarn.lock
+package-lock.json
+
+# Build output (frontend + Python cache)
+dist/
+build/
+*.egg-info/
+*.egg
+*.log
+.cache/
+coverage/
+
+# FastAPI / Flask dev server logs
+*.pid
+*.db
+
+# Frontend build output (Next.js or Vite)
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Local data / secrets / test output
+*.sqlite3
+*.json
+tmp/
