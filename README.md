@@ -151,11 +151,10 @@ ChatVid-AI/
   - `page.tsx`: Home page with YouTube URL and API key input
   - `chat/page.tsx`: Video player and chat interface
 - `components/`: Reusable React components
-- `ChatBox.tsx`: Chat interface with markdown support and visual search
-- `SectionList.tsx`: Displays timestamped video sections
-- `VideoPlayer.tsx`: YouTube player component
-- `VisualSearch.tsx`: Visual search interface
-- `Loader.tsx`: Loading state component
+  - `ChatBox.tsx`: Chat interface with markdown support and visual search
+  - `SectionList.tsx`: Displays timestamped video sections
+  - `VideoPlayer.tsx`: YouTube player component
+  - `Loader.tsx`: Loading state component
 - `lib/`: Utility functions and API clients
 - `public/`: Static assets
 - `styles/`: Global styles and Tailwind configuration
