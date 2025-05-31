@@ -16,7 +16,7 @@ export default function HomePage() {
   const [geminiKey, setGeminiKey] = useState("");
   const router = useRouter();
 
-  // Called whenever the user clicks “Start Chatting”
+  // Called whenever the user clicks “ChatVid AI”
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     // ───────────────
@@ -30,51 +30,145 @@ export default function HomePage() {
   }
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
-      <h1 className="text-2xl font-semibold mb-4">
-        Enter YouTube URL &amp; Gemini Key
-      </h1>
-      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
-        {/* Input for the YouTube URL */}
-        <div>
-          <label htmlFor="videoUrl" className="block font-medium">
-            YouTube Video URL
-          </label>
-          <input
-            type="url"
-            id="videoUrl"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
-            placeholder="https://www.youtube.com/watch?v=..."
-            required
-            className="mt-1 w-full border border-gray-300 rounded p-2"
-          />
-        </div>
+    <main className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+      {/* 147×147 image centered above the form */}
+      <img
+        src="/ChatVid-AI.jpg"
+        alt="ChatVid AI Logo"
+        width={147}
+        height={147}
+        className="mb-6"
+      />
 
-        {/* Input for the Gemini API Key */}
-        <div>
-          <label htmlFor="geminiKey" className="block font-medium">
-            Gemini API Key
-          </label>
-          <input
-            type="text"
-            id="geminiKey"
-            value={geminiKey}
-            onChange={(e) => setGeminiKey(e.target.value)}
-            placeholder="Paste your Gemini API key here"
-            required
-            className="mt-1 w-full border border-gray-300 rounded p-2"
-          />
+      <div className="wrapper">
+        <div className="flip-card__inner">
+          <div className="flip-card__front">
+            <div className="title">Enter Details</div>
+            <form className="flip-card__form" onSubmit={handleSubmit}>
+              <input
+                className="flip-card__input"
+                name="videoUrl"
+                placeholder="YouTube Link"
+                type="url"
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                required
+              />
+              <input
+                className="flip-card__input"
+                name="geminiKey"
+                placeholder="Gemini API Key"
+                type="password"
+                value={geminiKey}
+                onChange={(e) => setGeminiKey(e.target.value)}
+                required
+              />
+              <button className="flip-card__btn" type="submit">
+                ChatVid AI
+              </button>
+            </form>
+          </div>
         </div>
+      </div>
 
-        {/* Submit button */}
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-        >
-          Start Chatting
-        </button>
-      </form>
+      {/* ───────────────
+          CSS for the “wrapper” + “flip‐card” styling.
+          We’ve removed all toggle/sign‐up logic, and set the form’s bg to #B2D8CE.
+      ─────────────── */}
+      <style jsx>{`
+        /* From Uiverse.io by andrew-demchenk0, trimmed down */
+        .wrapper {
+          /* Center the card */
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .flip-card__inner {
+          width: 300px;
+          height: 350px;
+          position: relative;
+          background-color: transparent;
+          perspective: 1000px;
+          text-align: center;
+          transition: transform 0.8s;
+          transform-style: preserve-3d;
+        }
+
+        .flip-card__front {
+          padding: 20px;
+          position: absolute;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+          background: #b2d8ce; /* Grey background */
+          gap: 20px;
+          border-radius: 5px;
+          border: 2px solid var(--main-color, #323232);
+          box-shadow: 4px 4px var(--main-color, #323232);
+        }
+
+        .flip-card__form {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 20px;
+        }
+
+        .title {
+          margin: 20px 0;
+          font-size: 25px;
+          font-weight: 900;
+          text-align: center;
+          color: var(--main-color, #323232);
+        }
+
+        .flip-card__input {
+          width: 250px;
+          height: 40px;
+          border-radius: 5px;
+          border: 2px solid var(--main-color, #323232);
+          background-color: var(--bg-color, #fff);
+          box-shadow: 4px 4px var(--main-color, #323232);
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--font-color, #323232);
+          padding: 5px 10px;
+          outline: none;
+        }
+
+        .flip-card__input::placeholder {
+          color: var(--font-color-sub, #666);
+          opacity: 0.8;
+        }
+
+        .flip-card__input:focus {
+          border: 2px solid var(--input-focus, #2d8cf0);
+        }
+
+        .flip-card__btn {
+          margin: 20px 0;
+          width: 120px;
+          height: 40px;
+          border-radius: 5px;
+          border: 2px solid var(--main-color, #323232);
+          background-color: var(--bg-color, #fff);
+          box-shadow: 4px 4px var(--main-color, #323232);
+          font-size: 17px;
+          font-weight: 600;
+          color: var(--font-color, #323232);
+          cursor: pointer;
+          transition: box-shadow 0.1s, transform 0.1s;
+        }
+
+        .flip-card__btn:active {
+          box-shadow: 0px 0px var(--main-color, #323232);
+          transform: translate(3px, 3px);
+        }
+      `}</style>
     </main>
   );
 }
