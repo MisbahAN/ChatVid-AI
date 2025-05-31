@@ -198,7 +198,7 @@ ChatVid-AI/
 - [x] Implement chat with video using RAG (retrieve + generate)
 - [x] Visual scene search: embed frames and match with user text
 
-### 🔜 Phase 2: Frontend (In Progress)
+### ✅ Phase 2: Frontend (Completed)
 - [x] Project Setup: Next.js + TypeScript + Tailwind CSS
 - [x] User Inputs: YouTube URL + Gemini API Key
 - [x] Video Display + Section Summaries
@@ -206,6 +206,8 @@ ChatVid-AI/
 - [x] Visual Search (Semantic Frame Search)
 
 ### 🧪 Future Enhancements
+- [ ] Crazy good UI Design
+- [ ] Deploy on vercel to misbahan.com
 - [ ] Loading states and error handling
 - [ ] Chat history persistence
 - [ ] Speaker detection
