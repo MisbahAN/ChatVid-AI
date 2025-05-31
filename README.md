@@ -1,4 +1,6 @@
-# ![ChatVid AI Icon](client/public/ChatVid-AI.ico) ChatVid AI
+<p>
+  <img src="client/public/ChatVid-AI.ico" alt="ChatVid AI Icon" width="32" height="32" style="vertical-align:middle;" /> ChatVid AI
+</p>
 
 **ChatVid AI** — talk to your videos like they've got something to say. _(Because they do.)_
 
