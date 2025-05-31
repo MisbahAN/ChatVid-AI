@@ -1,8 +1,8 @@
-<p>
-  <img src="client/public/ChatVid-AI.ico" alt="ChatVid AI Icon" width="32" height="32" style="vertical-align:middle;" /> ChatVid AI
+<p align="center">
+  <img src="client/public/ChatVid-AI.ico" alt="ChatVid AI Logo" width="80" />
 </p>
 
-**ChatVid AI** — talk to your videos like they've got something to say. _(Because they do.)_
+# ChatVid AI
 
 ChatVid AI is a multimodal, Gemini-powered video analysis system that lets you interact with YouTube videos like never before. Paste a link, ask questions, get timestamped breakdowns, and even search for visual content within the video — all using Google's Gemini API and multimodal RAG techniques.
 
