@@ -1,4 +1,4 @@
-# 🎬 ChatVid AI
+# ![ChatVid AI Icon](client/public/ChatVid-AI.ico) ChatVid AI
 
 **ChatVid AI** — talk to your videos like they've got something to say. _(Because they do.)_
 
@@ -22,30 +22,43 @@ ChatVid AI is a multimodal, Gemini-powered video analysis system that lets you i
 | **LLM**        | Gemini API (text, image, video understanding)        |
 | **Embeddings** | Gemini multimodal embedding API                      |
 | **Retrieval**  | In-memory vector matching (cosine similarity, no DB) |
-| **Proxy**      | Webshare rotating proxy (for YouTube transcript API) |
 
 ## 🛠 Project Structure
 
 ```
 ChatVid-AI/
-├── server/                # Python backend (FastAPI)
-│   ├── main.py           # FastAPI routes and server setup
-│   ├── transcript.py     # YouTube transcript extraction with proxy support
-│   ├── gemini_utils.py   # Gemini API integration for chat and RAG
-│   ├── sectioning.py     # Video section analysis and timestamp generation
-│   ├── visual_search.py  # Frame extraction and visual content search
-│   ├── frames/          # Temporary storage for video frames
-│   └── .env             # (ignored) local Gemini key for testing
-├── frontend/             # Next.js frontend (TypeScript + Tailwind)
-│   ├── pages/           # Next.js pages
-│   │   ├── index.tsx    # YouTube URL input + API key setup
-│   │   └── chat.tsx     # Video player + chat interface
-│   ├── components/      # React components
-│   ├── public/          # Static assets
-│   └── (Next.js setup)
-├── .gitignore           # Git ignore rules
-├── requirements.txt     # Python dependencies
-└── README.md
+├── server/                   # Python backend (FastAPI)
+│   ├── main.py               # FastAPI routes and server setup
+│   ├── transcript.py         # YouTube transcript extraction
+│   ├── gemini_utils.py       # Gemini API integration for chat, embeddings, and RAG functionality
+│   ├── sectioning.py         # Video section analysis and timestamp generation
+│   ├── visual_search.py      # Frame extraction and visual content search
+│   └── frames/               # Temporary storage for video frames
+├── client/                   # Next.js frontend (TypeScript + Tailwind)
+│   ├── app/                  # Next.js App Router pages
+│   │   ├── layout.tsx        # Root layout with metadata and global styles
+│   │   ├── page.tsx          # Home page: YouTube URL + API Key input
+│   │   └── chat/             # Chat interface route
+│   │       └── page.tsx      # Video player + chat interface
+│   ├── components/           # Reusable React components
+│   │   ├── ChatBox.tsx       # Chat interface with markdown support and visual search
+│   │   ├── SectionList.tsx   # Timestamped video sections
+│   │   ├── VideoPlayer.tsx   # YouTube player component
+│   │   ├── VisualSearch.tsx  # Visual search interface
+│   │   └── Loader.tsx        # Loading state component
+│   ├── lib/                  # Utility functions and API clients
+│   ├── public/               # Static assets
+│   ├── styles/               # Global styles and Tailwind config
+│   ├── next-env.d.ts         # TypeScript environment declaration file
+│   ├── next.config.js        # Next.js configuration
+│   ├── package-lock.json     # Dependency lock file
+│   ├── package.json          # Frontend dependencies and scripts
+│   ├── postcss.config.js     # PostCSS configuration
+│   ├── tailwind.config.ts    # Tailwind CSS configuration
+│   └── tsconfig.json         # TypeScript configuration
+├── .gitignore                # Git ignore rules
+├── requirements.txt          # Python dependencies
+└── README.md                 # Project documentation
 ```
 
 ## 🚀 Getting Started
@@ -55,7 +68,6 @@ ChatVid-AI/
 - Python 3.8+
 - Node.js 16+ and npm
 - Gemini API key
-- (Optional) Webshare proxy account for YouTube transcript API
 
 ### Backend Setup
 
@@ -103,18 +115,8 @@ ChatVid-AI/
    # Navigate to the client directory
    cd client
 
-   # Install core dependencies
-   npm install next react react-dom
-   
-   # Install TypeScript and type definitions
-   npm install typescript @types/react @types/node --save-dev
-   
-   # Install Tailwind CSS and its dependencies
-   npm install tailwindcss postcss autoprefixer
-   npx tailwindcss init -p
-   
-   # Install additional required packages
-   npm install axios react-player
+   # Install dependencies. Ensure that the necessary configuration files (next-env.d.ts, next.config.js, postcss.config.js, tailwind.config.ts, tsconfig.json) are present in the 'client' directory from the repository clone. The 'npm install' command reads the package.json file, installs the required packages, and generates the package-lock.json file.
+   npm install
    ```
 
 2. **Run the frontend development server**
@@ -129,7 +131,7 @@ ChatVid-AI/
 
 #### Backend Files (`/server`)
 - `main.py`: FastAPI application setup, route definitions, and API endpoints
-- `transcript.py`: YouTube video transcript extraction with proxy support
+- `transcript.py`: Handles YouTube video transcript extraction
 - `gemini_utils.py`: Gemini API integration for chat, embeddings, and RAG functionality
 - `sectioning.py`: Video content analysis and timestamped section generation
 - `visual_search.py`: Frame extraction and visual content search implementation
@@ -137,28 +139,41 @@ ChatVid-AI/
 
 #### Frontend Files (`/client`)
 - `app/`: Next.js 13+ app directory containing page components and layouts
+  - `layout.tsx`: Root layout with metadata and global styles
+  - `page.tsx`: Home page with YouTube URL and API key input
+  - `chat/page.tsx`: Video player and chat interface
 - `components/`: Reusable React components
+- `ChatBox.tsx`: Chat interface with markdown support and visual search
+- `SectionList.tsx`: Displays timestamped video sections
+- `VideoPlayer.tsx`: YouTube player component
+- `VisualSearch.tsx`: Visual search interface
+- `Loader.tsx`: Loading state component
 - `lib/`: Utility functions and API clients
-- `styles/`: Global styles and Tailwind CSS configuration
 - `public/`: Static assets
-- `next.config.js`: Next.js configuration
-- `tailwind.config.ts`: Tailwind CSS configuration
-- `tsconfig.json`: TypeScript configuration
+- `styles/`: Global styles and Tailwind configuration
+- Configuration files:
+  - `next-env.d.ts`: TypeScript environment declaration file
+  - `next.config.js`: Next.js configuration
+  - `package-lock.json`: Dependency lock file
+  - `package.json`: Frontend dependencies and scripts
+  - `postcss.config.js`: PostCSS configuration
+  - `tailwind.config.ts`: Tailwind CSS configuration
+  - `tsconfig.json`: TypeScript configuration
 
 ## 🧠 How It Works
 
 | Step                  | Tech / API used                                                 |
 | --------------------- | --------------------------------------------------------------- |
-| Transcript Extraction | youtube-transcript-api + WebshareProxyConfig                    |
-| Section Breakdown     | Gemini's video understanding API                                |
-| Chat with Video (RAG) | Gemini's text generation + cosine similarity on embedded chunks |
+| Transcript Extraction | youtube-transcript-api                                        |
+| Section Breakdown     | Gemini (text generation on transcript)                        |
+| Chat with Video (RAG) | Gemini (text generation with transcript context)                |
 | Visual Search         | Gemini's frame embedding + cosine similarity                    |
 
 ### Backend Components
 
 - **main.py**: FastAPI routes for video processing, chat, and visual search
-- **transcript.py**: Handles YouTube video transcript extraction with proxy support
-- **gemini_utils.py**: Manages Gemini API interactions for chat and RAG
+- **transcript.py**: Handles YouTube video transcript extraction
+- **gemini_utils.py**: Manages Gemini API interactions for chat, embeddings, and RAG functionality
 - **sectioning.py**: Analyzes video content and generates timestamped sections
 - **visual_search.py**: Extracts frames and performs visual content search
 
@@ -187,8 +202,8 @@ ChatVid-AI/
 - [x] Project Setup: Next.js + TypeScript + Tailwind CSS
 - [x] User Inputs: YouTube URL + Gemini API Key
 - [x] Video Display + Section Summaries
-- [ ] Chat Interface (Transcript Q&A)
-- [ ] Visual Search (Semantic Frame Search)
+- [x] Chat Interface (Transcript Q&A)
+- [x] Visual Search (Semantic Frame Search)
 
 ### 🧪 Future Enhancements
 - [ ] Loading states and error handling
@@ -198,11 +213,6 @@ ChatVid-AI/
 - [ ] Upload local MP4 videos
 - [ ] Export highlights / timestamps
 - [ ] Cross-video multimodal search
-
-## 🔒 API Keys & Limits
-
-- Users must provide their own Gemini API key via the frontend
-- YouTube transcript API calls may require residential rotating proxies due to IP bans — Webshare is integrated in transcript.py
 
 ## 👨‍💻 Author
 

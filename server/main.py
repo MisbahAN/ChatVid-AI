@@ -102,6 +102,6 @@ def ask_question(req: QuestionRequest):
 @app.post("/visual-search")
 async def visual_search_route(req: VisualSearchRequest):
     extract_frames(req.video_url, interval=5)
-    frames = await process_all_frames_async("server/frames")
+    frames = await process_all_frames_async("frames")
     result = semantic_search(req.query, frames)
     return result

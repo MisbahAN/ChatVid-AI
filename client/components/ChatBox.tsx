@@ -1,11 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { postQuestion } from "@/lib/api";
+import { postQuestion, postVisualSearch } from "@/lib/api";
 
 type QA = {
   question: string;
   answer: string;
+};
+
+type VisualResult = {
+  timestamp: number;
+  description: string;
+  score?: number;
 };
 
 type ChatBoxProps = {
@@ -14,11 +20,17 @@ type ChatBoxProps = {
 };
 
 export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
+  // ─── Chat State ──────────────────────────────────────────────────────────────
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<QA[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingChat, setLoadingChat] = useState(false);
 
-  // Parse "HH:MM:SS" or "MM:SS" into total seconds
+  // ─── Visual Search State ─────────────────────────────────────────────────────
+  const [visualQuery, setVisualQuery] = useState("");
+  const [visualResult, setVisualResult] = useState<VisualResult | null>(null);
+  const [loadingVisual, setLoadingVisual] = useState(false);
+
+  // ─── Timestamp Parsing & Formatting ──────────────────────────────────────────
   function parseTimestamp(ts: string): number {
     const parts = ts.split(":").map((p) => parseInt(p, 10));
     if (parts.some((n) => isNaN(n))) return NaN;
@@ -32,7 +44,6 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
     return NaN;
   }
 
-  // Format seconds into "M:SS"
   function formatTimestamp(seconds: number): string {
     if (seconds < 0 || isNaN(seconds)) return "0:00";
     const hrs = Math.floor(seconds / 3600);
@@ -47,7 +58,7 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
     return `${mins}:${String(secs).padStart(2, "0")}`;
   }
 
-  // Escape HTML entities
+  // ─── HTML Escaping ────────────────────────────────────────────────────────────
   function escapeHtml(str: string): string {
     return str
       .replace(/&/g, "&amp;")
@@ -57,14 +68,18 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       .replace(/'/g, "&#39;");
   }
 
-  // Convert raw answer into HTML with local ?start= links in blue underline
+  // ─── Transform Chat Answers ───────────────────────────────────────────────────
+  //  - Convert literal "\n" and actual newlines to <br/>
+  //  - Convert **bold** or *bold* into <strong>bold</strong>
+  //  - Convert YouTube-style <a href="...&t=XXs">TIMESTAMP</a> and plain "MM:SS"
+  //    into blue, underlined <a href="?start=XX">MM:SS</a>
   function transformAnswer(raw: string): string {
     let text = raw;
 
     // 1. Unescape any \" → "
     text = text.replace(/\\"/g, '"');
 
-    // 2. Strip surrounding quotes if the entire text is wrapped in quotes
+    // 2. Strip surrounding quotes if present
     text = text.trim();
     if (
       (text.startsWith('"') && text.endsWith('"')) ||
@@ -73,7 +88,29 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       text = text.slice(1, -1);
     }
 
-    // 3. Convert YouTube‐style <a href="…&t=XXs">…</a> into local mm:ss links
+    // 3. Convert literal "\n" (backslash-n) into a placeholder
+    const NEWLINE_PLACEHOLDER = "__NEWLINE__";
+    text = text.replace(/\\n/g, NEWLINE_PLACEHOLDER);
+    // Also convert actual newlines to the same placeholder
+    text = text.replace(/\r\n|\r|\n/g, NEWLINE_PLACEHOLDER);
+
+    // 4. Convert **bold** or *bold* into a placeholder -> <strong>bold</strong>
+    let boldIdx = 0;
+    const boldPlaceholders: Record<string, string> = {};
+    // Regex supports both **text** and *text*
+    const boldRegex = /(\*\*|\*)(.*?)\1/g;
+    text = text.replace(
+      boldRegex,
+      (_match, _stars: string, content: string) => {
+        const escapedContent = escapeHtml(content);
+        const key = `__BOLD_${boldIdx}__`;
+        boldPlaceholders[key] = `<strong>${escapedContent}</strong>`;
+        boldIdx += 1;
+        return key;
+      }
+    );
+
+    // 5. Convert YouTube-style <a href="...&t=XXs">TIMESTAMP</a> → placeholder
     let idx = 0;
     const placeholders: Record<string, string> = {};
     const ytLinkRegex =
@@ -90,7 +127,7 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       return key;
     });
 
-    // 4. Convert ranges "00:00:27--00:00:43" or "0:00:27–0:00:43" to "(0:27–0:43)"
+    // 6. Convert any plain-text range: "MM:SS--MM:SS" or "MM:SS–MM:SS"
     const rangeRegex =
       /(\d{1,2}:\d{2}(?::\d{2})?)(?:-{2}|-|\u2013)(\d{1,2}:\d{2}(?::\d{2})?)/g;
     text = text.replace(
@@ -111,7 +148,7 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       }
     );
 
-    // 5. Convert single timestamps "HH:MM:SS" or "MM:SS" to "<a href="?start=XX">M:SS</a>"
+    // 7. Convert single timestamps "HH:MM:SS" or "MM:SS" → placeholder
     const singleRegex = /(\d{1,2}:\d{2}(?::\d{2})?)/g;
     text = text.replace(singleRegex, (_match, ts: string) => {
       // Skip if part of a range
@@ -127,40 +164,56 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       return key;
     });
 
-    // 6. Escape remaining text, then restore placeholders
+    // 8. Escape everything else, then restore placeholders and bold placeholders
     let escaped = "";
-    if (Object.keys(placeholders).length === 0) {
+    const placeholderKeys = Object.keys(placeholders);
+    const boldKeys = Object.keys(boldPlaceholders);
+    if (placeholderKeys.length === 0 && boldKeys.length === 0) {
       escaped = escapeHtml(text);
     } else {
-      const combined = text.replace(
-        new RegExp(
-          Object.keys(placeholders)
-            .map((k) => k.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
-            .join("|"),
-          "g"
-        ),
-        (match) => `@@${match}@@`
+      // Wrap all placeholders so we don't escape them
+      const allKeys = [...placeholderKeys, ...boldKeys];
+      const combinedRegex = new RegExp(
+        allKeys
+          .map((k) => k.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
+          .join("|"),
+        "g"
       );
-      escaped = escapeHtml(combined);
-      for (const key in placeholders) {
-        const placeholderKey = `@@${key}@@`;
+      const wrapped = text.replace(combinedRegex, (match) => `@@${match}@@`);
+      escaped = escapeHtml(wrapped);
+
+      // Restore timestamp anchors
+      for (const key of placeholderKeys) {
+        const wrappedKey = `@@${key}@@`;
         escaped = escaped.replace(
-          new RegExp(placeholderKey, "g"),
+          new RegExp(wrappedKey, "g"),
           placeholders[key]
+        );
+      }
+
+      // Restore bold tags
+      for (const key of boldKeys) {
+        const wrappedKey = `@@${key}@@`;
+        escaped = escaped.replace(
+          new RegExp(wrappedKey, "g"),
+          boldPlaceholders[key]
         );
       }
     }
 
+    // 9. Restore newline placeholders to <br/>
+    escaped = escaped.replace(new RegExp(NEWLINE_PLACEHOLDER, "g"), "<br/>");
+
     return escaped;
   }
 
-  // New handleSend now takes event so Enter can submit
-  const handleSend = async (e: React.FormEvent) => {
+  // ─── Handle Chat Submission (Enter or Send) ─────────────────────────────────
+  const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
     const apiKey = localStorage.getItem("GEMINI_API_KEY") || "";
-    setLoading(true);
+    setLoadingChat(true);
 
     try {
       const res = await postQuestion(videoUrl, input, apiKey);
@@ -171,11 +224,32 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       alert("Error getting response. Check console.");
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoadingChat(false);
     }
   };
 
-  // Intercept clicks on <a href="?start=XX">
+  // ─── Handle Visual Search Submission ───────────────────────────────────────
+  const handleVisualSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!visualQuery.trim()) return;
+
+    const apiKey = localStorage.getItem("GEMINI_API_KEY") || "";
+    setLoadingVisual(true);
+    setVisualResult(null);
+
+    try {
+      const res = await postVisualSearch(videoUrl, visualQuery, apiKey);
+      setVisualResult(res);
+      setVisualQuery("");
+    } catch (err) {
+      alert("Error getting visual search result. Check console.");
+      console.error(err);
+    } finally {
+      setLoadingVisual(false);
+    }
+  };
+
+  // ─── Intercept clicks on <a href="?start=XX">…</a> to jump the video ─────────
   const handleLinkClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (target.tagName === "A") {
@@ -197,9 +271,44 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
   };
 
   return (
-    <div className="p-4 border-t border-gray-300 space-y-4">
-      {/* Wrap input/button in a form so Enter works */}
-      <form onSubmit={handleSend} className="flex gap-2">
+    <div className="p-4 border-t border-gray-300 space-y-6">
+      {/* ─── Visual Search Form ───────────────────────────────────────────────── */}
+      <form onSubmit={handleVisualSearch} className="flex gap-2 items-center">
+        <input
+          type="text"
+          value={visualQuery}
+          onChange={(e) => setVisualQuery(e.target.value)}
+          placeholder="Visual search: e.g. “red car”"
+          className="flex-1 border rounded p-2"
+        />
+        <button
+          type="submit"
+          disabled={loadingVisual}
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+        >
+          {loadingVisual ? "Searching…" : "Search"}
+        </button>
+      </form>
+
+      {/* ─── Visual Search Result ─────────────────────────────────────────────── */}
+      {visualResult && (
+        <div className="border p-3 rounded bg-gray-50">
+          <p className="font-semibold text-gray-800">Visual Search Result:</p>
+          <p className="mt-1 text-gray-700">{visualResult.description}</p>
+          <button
+            onClick={() => onTimestampClick(visualResult.timestamp)}
+            className="mt-2 text-blue-600 underline"
+          >
+            Jump to {formatTimestamp(visualResult.timestamp)}
+          </button>
+        </div>
+      )}
+
+      {/* ─── Divider ───────────────────────────────────────────────────────────── */}
+      <hr className="border-gray-300" />
+
+      {/* ─── Chat Form ─────────────────────────────────────────────────────────── */}
+      <form onSubmit={handleChatSubmit} className="flex gap-2">
         <input
           type="text"
           value={input}
@@ -209,14 +318,14 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
         />
         <button
           type="submit"
-          disabled={loading}
+          disabled={loadingChat}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
         >
-          {loading ? "Sending…" : "Send"}
+          {loadingChat ? "Sending…" : "Send"}
         </button>
       </form>
 
-      {/* History */}
+      {/* ─── Chat History ──────────────────────────────────────────────────────── */}
       <div className="max-h-64 overflow-y-auto space-y-4">
         {history.map((qa, idx) => (
           <div key={idx} className="border p-3 rounded bg-white">

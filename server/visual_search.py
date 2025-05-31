@@ -63,13 +63,17 @@ def download_video(video_url: str, output_path: str) -> str:
 #    - Resizes frame to 320x180
 #    - Saves frame metadata with timestamp and path
 
+
 def extract_frames(video_url: str, interval: int = 5) -> list[dict]:
-    frames_dir = Path("server/frames")
+    # Always write into ChatVid-AI/server/frames
+    frames_dir = Path(__file__).parent / "frames"
     if frames_dir.exists():
         shutil.rmtree(frames_dir)
     frames_dir.mkdir(parents=True, exist_ok=True)
 
-    video_path = download_video(video_url, "server")
+    # Download into ChatVid-AI/server/temp_video.mp4
+    video_path = download_video(video_url, str(Path(__file__).parent))
+
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -108,8 +112,12 @@ def extract_frames(video_url: str, interval: int = 5) -> list[dict]:
 #    - Embeds each description and appends timestamp, description, and embedding
 #    - Replaces original frame-by-frame processor and embedding step
 
-async def process_all_frames_async(frame_dir: str):
-    print("🚀 Starting async frame analysis...")
+async def process_all_frames_async(frame_dir: str = None):
+    # Default to ChatVid-AI/server/frames if no argument is given
+    if frame_dir is None:
+        frame_dir = str(Path(__file__).parent / "frames")
+
+    print(f"🚀 Starting async frame analysis in {frame_dir}...")
 
     results = []
     frame_files = sorted(Path(frame_dir).glob("*.jpg"))
@@ -144,6 +152,7 @@ async def process_all_frames_async(frame_dir: str):
 
     print("✅ Async frame analysis complete.")
     return results
+
 
 
 
