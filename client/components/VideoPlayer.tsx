@@ -1,22 +1,25 @@
 "use client";
 
-import dynamic from "next/dynamic";
+type VideoPlayerProps = {
+  videoId: string; // e.g. "KPD8C7c6P1w"
+  startSec: number; // e.g. 83
+};
 
-// Dynamically import only the YouTube version of ReactPlayer (no SSR)
-const ReactPlayer = dynamic(() => import("react-player/youtube"), {
-  ssr: false,
-});
-
-interface VideoPlayerProps {
-  videoId: string;
-}
-
-export default function VideoPlayer({ videoId }: VideoPlayerProps) {
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+export default function VideoPlayer({ videoId, startSec }: VideoPlayerProps) {
+  // The `?autoplay=1` causes it to start playing automatically at startSec.
+  // The `&enablejsapi=1` is optional (we're not using postMessage here).
+  const src = `https://www.youtube.com/embed/${videoId}?start=${startSec}&autoplay=1&rel=0`;
 
   return (
-    <div className="w-full max-w-3xl mx-auto mb-6">
-      <ReactPlayer url={videoUrl} controls width="100%" />
-    </div>
+    <iframe
+      key={`${videoId}?start=${startSec}`} // force reload when startSec changes
+      width="100%"
+      height="100%"
+      src={src}
+      title="YouTube video player"
+      frameBorder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowFullScreen
+    ></iframe>
   );
 }

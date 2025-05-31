@@ -1,61 +1,78 @@
 "use client";
+// ───────────────
+// 1. “use client” means this file is a React component that runs in the browser (not on the Node server).
 
 import { useState } from "react";
+// ───────────────
+// useState is a React Hook that lets us keep track of “local component state” (form values here).
+
 import { useRouter } from "next/navigation";
+// ───────────────────────────
+// useRouter from Next.js App Router gives us a programmatic way to navigate (push to /chat).
 
 export default function HomePage() {
+  // State hooks to store the form’s input
   const [videoUrl, setVideoUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
+  const [geminiKey, setGeminiKey] = useState("");
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Called whenever the user clicks “Start Chatting”
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    // ───────────────
+    // Prevent page‐reload default so we can do a single‐page navigation.
 
-    // Save the Gemini key in localStorage for later use
-    localStorage.setItem("GEMINI_API_KEY", apiKey);
+    // Store Gemini API Key in localStorage (so /chat can read it)
+    localStorage.setItem("GEMINI_API_KEY", geminiKey);
 
-    // Extract the 11-character YouTube video ID via regex
-    const match = videoUrl.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
-    const videoId = match?.[1];
-    if (videoId) {
-      router.push(`/chat?video=${videoId}`);
-    } else {
-      alert(
-        "Invalid YouTube URL. Please enter a full URL like https://www.youtube.com/watch?v=VIDEO_ID"
-      );
-    }
-  };
+    // Navigate to /chat, passing the video URL as a query‐param
+    router.push(`/chat?videoUrl=${encodeURIComponent(videoUrl)}`);
+  }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-      <h1 className="text-3xl font-bold mb-6 text-center">
-        Chat with a YouTube Video
+    <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
+      <h1 className="text-2xl font-semibold mb-4">
+        Enter YouTube URL &amp; Gemini Key
       </h1>
+      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
+        {/* Input for the YouTube URL */}
+        <div>
+          <label htmlFor="videoUrl" className="block font-medium">
+            YouTube Video URL
+          </label>
+          <input
+            type="url"
+            id="videoUrl"
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+            required
+            className="mt-1 w-full border border-gray-300 rounded p-2"
+          />
+        </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-md">
-        <input
-          type="text"
-          placeholder="🔗 Enter YouTube Video URL"
-          value={videoUrl}
-          onChange={(e) => setVideoUrl(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded"
-          required
-        />
+        {/* Input for the Gemini API Key */}
+        <div>
+          <label htmlFor="geminiKey" className="block font-medium">
+            Gemini API Key
+          </label>
+          <input
+            type="text"
+            id="geminiKey"
+            value={geminiKey}
+            onChange={(e) => setGeminiKey(e.target.value)}
+            placeholder="Paste your Gemini API key here"
+            required
+            className="mt-1 w-full border border-gray-300 rounded p-2"
+          />
+        </div>
 
-        <input
-          type="password"
-          placeholder="🔐 Enter Gemini API Key"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded"
-          required
-        />
-
+        {/* Submit button */}
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 transition"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
         >
-          🚀 Start Chat
+          Start Chatting
         </button>
       </form>
     </main>
