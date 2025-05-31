@@ -29,11 +29,9 @@ export default function SectionList({
     if (parts.some((n) => isNaN(n))) return NaN;
 
     if (parts.length === 2) {
-      // [MM, SS]
       const [mm, ss] = parts;
       return mm * 60 + ss;
     } else if (parts.length === 3) {
-      // [HH, MM, SS]
       const [hh, mm, ss] = parts;
       return hh * 3600 + mm * 60 + ss;
     }
@@ -61,8 +59,6 @@ export default function SectionList({
     return `${mins}:${String(secs).padStart(2, "0")}`;
   }
 
-  // Convert each raw section.start ("MM:SS") → numeric seconds.
-  // Then drop any sections where parsing failed.
   const validSections = sections
     .map((sec) => {
       const startSeconds = parseTimestamp(sec.start);
@@ -79,14 +75,13 @@ export default function SectionList({
       {validSections.map((sec, idx) => (
         <li
           key={idx}
-          className="cursor-pointer hover:bg-gray-200 p-2 rounded"
+          className="cursor-pointer hover:bg-gray-200 p-2 rounded-lg flex items-center"
           onClick={() => onTimestampClick(sec.startSeconds)}
         >
-          <span className="font-mono text-sm text-blue-600">
+          <span className="font-mono text-sm text-blue-600 w-16">
             {formatTime(sec.startSeconds)}
-          </span>{" "}
-          –{" "}
-          <span className="text-sm">
+          </span>
+          <span className="text-sm ml-2">
             {sec.summary.length > 60
               ? sec.summary.substring(0, 60) + "..."
               : sec.summary}

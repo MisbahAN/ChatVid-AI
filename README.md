@@ -46,7 +46,6 @@ ChatVid-AI/
 │   │   ├── ChatBox.tsx       # Chat interface with markdown support and visual search
 │   │   ├── SectionList.tsx   # Timestamped video sections
 │   │   ├── VideoPlayer.tsx   # YouTube player component
-│   │   ├── VisualSearch.tsx  # Visual search interface
 │   │   └── Loader.tsx        # Loading state component
 │   ├── lib/                  # Utility functions and API clients
 │   ├── public/               # Static assets
@@ -74,12 +73,14 @@ ChatVid-AI/
 ### Backend Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/MisbahAN/ChatVid-AI.git
    cd ChatVid-AI
    ```
 
 2. **Create and activate virtual environment**
+
    ```bash
    # macOS/Linux
    python3 -m venv venv
@@ -91,6 +92,7 @@ ChatVid-AI/
    ```
 
 3. **Install Python dependencies**
+
    ```bash
    cd server
    pip install -r requirements.txt
@@ -98,6 +100,7 @@ ChatVid-AI/
 
 4. **Configure environment variables**
    Create a `.env` file in the server directory:
+
    ```
    GEMINI_API_KEY=your_gemini_key_here
    ```
@@ -113,6 +116,7 @@ ChatVid-AI/
 ### Frontend Setup
 
 1. **Install Node.js dependencies**
+
    ```bash
    # Navigate to the client directory
    cd client
@@ -132,6 +136,7 @@ ChatVid-AI/
 ### File Structure and Responsibilities
 
 #### Backend Files (`/server`)
+
 - `main.py`: FastAPI application setup, route definitions, and API endpoints
 - `transcript.py`: Handles YouTube video transcript extraction
 - `gemini_utils.py`: Gemini API integration for chat, embeddings, and RAG functionality
@@ -140,6 +145,7 @@ ChatVid-AI/
 - `frames/`: Temporary storage directory for extracted video frames
 
 #### Frontend Files (`/client`)
+
 - `app/`: Next.js 13+ app directory containing page components and layouts
   - `layout.tsx`: Root layout with metadata and global styles
   - `page.tsx`: Home page with YouTube URL and API key input
@@ -164,12 +170,12 @@ ChatVid-AI/
 
 ## 🧠 How It Works
 
-| Step                  | Tech / API used                                                 |
-| --------------------- | --------------------------------------------------------------- |
-| Transcript Extraction | youtube-transcript-api                                        |
-| Section Breakdown     | Gemini (text generation on transcript)                        |
-| Chat with Video (RAG) | Gemini (text generation with transcript context)                |
-| Visual Search         | Gemini's frame embedding + cosine similarity                    |
+| Step                  | Tech / API used                                  |
+| --------------------- | ------------------------------------------------ |
+| Transcript Extraction | youtube-transcript-api                           |
+| Section Breakdown     | Gemini (text generation on transcript)           |
+| Chat with Video (RAG) | Gemini (text generation with transcript context) |
+| Visual Search         | Gemini's frame embedding + cosine similarity     |
 
 ### Backend Components
 
@@ -182,6 +188,7 @@ ChatVid-AI/
 ### Frontend Flow
 
 1. **URL Input** (`/`):
+
    - YouTube URL input form
    - Gemini API key setup (stored in localStorage)
    - Redirects to chat page with video ID
@@ -195,12 +202,14 @@ ChatVid-AI/
 ## 🗺️ Roadmap
 
 ### ✅ Phase 1: Backend (Completed)
+
 - [x] Extract transcript from YouTube link
 - [x] Generate Gemini-based section summaries with timestamps
 - [x] Implement chat with video using RAG (retrieve + generate)
 - [x] Visual scene search: embed frames and match with user text
 
 ### ✅ Phase 2: Frontend (Completed)
+
 - [x] Project Setup: Next.js + TypeScript + Tailwind CSS
 - [x] User Inputs: YouTube URL + Gemini API Key
 - [x] Video Display + Section Summaries
@@ -208,6 +217,7 @@ ChatVid-AI/
 - [x] Visual Search (Semantic Frame Search)
 
 ### 🧪 Future Enhancements
+
 - [ ] Crazy good UI Design
 - [ ] Deploy on vercel to misbahan.com
 - [ ] Loading states and error handling
@@ -221,5 +231,6 @@ ChatVid-AI/
 ## 👨‍💻 Author
 
 **Misbah Ahmed Nauman**
+
 - 🌐 [Portfolio](https://misbahan.com)
 - 🛠️ Built during Headstarter SWE Residency Sprint 2

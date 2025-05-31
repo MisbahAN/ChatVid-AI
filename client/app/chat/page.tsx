@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import VideoPlayer from "@/components/VideoPlayer";
-import SectionList from "@/components/SectionList";
 import ChatBox from "@/components/ChatBox";
 
 type Section = {
@@ -90,34 +89,20 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen">
-      {/* Left side: Video */}
+    <div className="flex flex-col md:flex-row h-screen bg-gray-100">
+      {/* LEFT SIDE: Video player (2/3 width on md+, full width on sm) */}
       <div className="md:w-2/3 w-full h-[50vh] md:h-screen bg-black">
         <VideoPlayer videoId={videoId} startSec={currentStartSec} />
       </div>
 
-      {/* Right side: Sections + Chat */}
-      <div className="md:w-1/3 w-full flex flex-col border-l border-gray-300">
-        {/* Sections adjusts height to its content, chat fills the rest */}
-        <div className="overflow-y-auto p-4 bg-gray-50">
-          <h2 className="text-xl font-semibold mb-2">Sections</h2>
-          {loadingSections ? (
-            <p className="text-gray-500">Loading sections…</p>
-          ) : (
-            <SectionList
-              sections={sections}
-              onTimestampClick={handleTimestampClick}
-            />
-          )}
-        </div>
-
-        {/* ChatBox fills remaining vertical space */}
-        <div className="flex-1 overflow-y-auto border-t border-gray-300 bg-white">
-          <ChatBox
-            videoUrl={videoUrlParam}
-            onTimestampClick={handleTimestampClick}
-          />
-        </div>
+      {/** RIGHT SIDE: Now replaced by a single ChatBox that contains three vertical thirds **/}
+      <div className="md:w-1/3 w-full flex flex-col border-l border-gray-300 bg-white">
+        <ChatBox
+          videoUrl={videoUrlParam}
+          sections={sections}
+          loadingSections={loadingSections}
+          onTimestampClick={handleTimestampClick}
+        />
       </div>
     </div>
   );

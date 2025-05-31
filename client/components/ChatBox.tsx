@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { postQuestion, postVisualSearch } from "@/lib/api";
+import SectionList from "@/components/SectionList";
 
 type QA = {
   question: string;
@@ -14,12 +15,26 @@ type VisualResult = {
   score?: number;
 };
 
+// Note: we now expect `start` and `end` as strings (e.g. "0:00", "2:43")
+type Section = {
+  start: string;
+  end: string;
+  summary: string;
+};
+
 type ChatBoxProps = {
   videoUrl: string;
+  sections: Section[]; // <-- Treat `start`/`end` as strings
+  loadingSections: boolean;
   onTimestampClick: (start: number) => void;
 };
 
-export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
+export default function ChatBox({
+  videoUrl,
+  sections,
+  loadingSections,
+  onTimestampClick,
+}: ChatBoxProps) {
   // ─── Chat State ──────────────────────────────────────────────────────────────
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<QA[]>([]);
@@ -69,17 +84,10 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
   }
 
   // ─── Transform Chat Answers ───────────────────────────────────────────────────
-  //  - Convert literal "\n" and actual newlines to <br/>
-  //  - Convert **bold** or *bold* into <strong>bold</strong>
-  //  - Convert YouTube-style <a href="...&t=XXs">TIMESTAMP</a> and plain "MM:SS"
-  //    into blue, underlined <a href="?start=XX">MM:SS</a>
   function transformAnswer(raw: string): string {
     let text = raw;
 
-    // 1. Unescape any \" → "
     text = text.replace(/\\"/g, '"');
-
-    // 2. Strip surrounding quotes if present
     text = text.trim();
     if (
       (text.startsWith('"') && text.endsWith('"')) ||
@@ -88,16 +96,13 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       text = text.slice(1, -1);
     }
 
-    // 3. Convert literal "\n" (backslash-n) into a placeholder
     const NEWLINE_PLACEHOLDER = "__NEWLINE__";
     text = text.replace(/\\n/g, NEWLINE_PLACEHOLDER);
-    // Also convert actual newlines to the same placeholder
     text = text.replace(/\r\n|\r|\n/g, NEWLINE_PLACEHOLDER);
 
-    // 4. Convert **bold** or *bold* into a placeholder -> <strong>bold</strong>
+    // Convert **bold** or *bold*
     let boldIdx = 0;
     const boldPlaceholders: Record<string, string> = {};
-    // Regex supports both **text** and *text*
     const boldRegex = /(\*\*|\*)(.*?)\1/g;
     text = text.replace(
       boldRegex,
@@ -110,7 +115,7 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       }
     );
 
-    // 5. Convert YouTube-style <a href="...&t=XXs">TIMESTAMP</a> → placeholder
+    // Convert YouTube‐style <a href="…&t=XXs">TIMESTAMP</a>
     let idx = 0;
     const placeholders: Record<string, string> = {};
     const ytLinkRegex =
@@ -127,7 +132,7 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       return key;
     });
 
-    // 6. Convert any plain-text range: "MM:SS--MM:SS" or "MM:SS–MM:SS"
+    // Convert plain‐text ranges “MM:SS–MM:SS”
     const rangeRegex =
       /(\d{1,2}:\d{2}(?::\d{2})?)(?:-{2}|-|\u2013)(\d{1,2}:\d{2}(?::\d{2})?)/g;
     text = text.replace(
@@ -148,7 +153,7 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       }
     );
 
-    // 7. Convert single timestamps "HH:MM:SS" or "MM:SS" → placeholder
+    // Convert single timestamps “MM:SS” or “HH:MM:SS”
     const singleRegex = /(\d{1,2}:\d{2}(?::\d{2})?)/g;
     text = text.replace(singleRegex, (_match, ts: string) => {
       // Skip if part of a range
@@ -164,14 +169,13 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       return key;
     });
 
-    // 8. Escape everything else, then restore placeholders and bold placeholders
+    // Escape everything else, then restore placeholders
     let escaped = "";
     const placeholderKeys = Object.keys(placeholders);
     const boldKeys = Object.keys(boldPlaceholders);
     if (placeholderKeys.length === 0 && boldKeys.length === 0) {
       escaped = escapeHtml(text);
     } else {
-      // Wrap all placeholders so we don't escape them
       const allKeys = [...placeholderKeys, ...boldKeys];
       const combinedRegex = new RegExp(
         allKeys
@@ -182,7 +186,6 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       const wrapped = text.replace(combinedRegex, (match) => `@@${match}@@`);
       escaped = escapeHtml(wrapped);
 
-      // Restore timestamp anchors
       for (const key of placeholderKeys) {
         const wrappedKey = `@@${key}@@`;
         escaped = escaped.replace(
@@ -190,8 +193,6 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
           placeholders[key]
         );
       }
-
-      // Restore bold tags
       for (const key of boldKeys) {
         const wrappedKey = `@@${key}@@`;
         escaped = escaped.replace(
@@ -201,32 +202,11 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       }
     }
 
-    // 9. Restore newline placeholders to <br/>
+    // Restore newline placeholders to <br/>
     escaped = escaped.replace(new RegExp(NEWLINE_PLACEHOLDER, "g"), "<br/>");
 
     return escaped;
   }
-
-  // ─── Handle Chat Submission (Enter or Send) ─────────────────────────────────
-  const handleChatSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    const apiKey = localStorage.getItem("GEMINI_API_KEY") || "";
-    setLoadingChat(true);
-
-    try {
-      const res = await postQuestion(videoUrl, input, apiKey);
-      const transformed = transformAnswer(res.answer);
-      setHistory((prev) => [...prev, { question: input, answer: transformed }]);
-      setInput("");
-    } catch (err) {
-      alert("Error getting response. Check console.");
-      console.error(err);
-    } finally {
-      setLoadingChat(false);
-    }
-  };
 
   // ─── Handle Visual Search Submission ───────────────────────────────────────
   const handleVisualSearch = async (e: React.FormEvent) => {
@@ -246,6 +226,27 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       console.error(err);
     } finally {
       setLoadingVisual(false);
+    }
+  };
+
+  // ─── Handle Chat Submission (Enter or Send) ─────────────────────────────────
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const apiKey = localStorage.getItem("GEMINI_API_KEY") || "";
+    setLoadingChat(true);
+
+    try {
+      const res = await postQuestion(videoUrl, input, apiKey);
+      const transformed = transformAnswer(res.answer);
+      setHistory((prev) => [...prev, { question: input, answer: transformed }]);
+      setInput("");
+    } catch (err) {
+      alert("Error getting response. Check console.");
+      console.error(err);
+    } finally {
+      setLoadingChat(false);
     }
   };
 
@@ -271,72 +272,88 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
   };
 
   return (
-    <div className="p-4 border-t border-gray-300 space-y-6">
-      {/* ─── Visual Search Form ───────────────────────────────────────────────── */}
-      <form onSubmit={handleVisualSearch} className="flex gap-2 items-center">
-        <input
-          type="text"
-          value={visualQuery}
-          onChange={(e) => setVisualQuery(e.target.value)}
-          placeholder="Visual search: e.g. “red car”"
-          className="flex-1 border rounded p-2"
-        />
-        <button
-          type="submit"
-          disabled={loadingVisual}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
-        >
-          {loadingVisual ? "Searching…" : "Search"}
-        </button>
-      </form>
+    <div className="flex flex-col h-full">
+      {/** ─── TOP 1/3: Sections ───────────────────────────────────────────── */}
+      <div className="h-1/3 overflow-y-auto p-4 bg-gray-50 border-b border-gray-300">
+        <h2 className="text-xl font-semibold mb-3">Sections</h2>
+        {loadingSections ? (
+          <p className="text-gray-500">Loading sections…</p>
+        ) : (
+          <SectionList
+            // Pass each section’s `start` and `end` (strings) directly—no reformatting
+            sections={sections}
+            onTimestampClick={onTimestampClick}
+          />
+        )}
+      </div>
 
-      {/* ─── Visual Search Result ─────────────────────────────────────────────── */}
-      {visualResult && (
-        <div className="border p-3 rounded bg-gray-50">
-          <p className="font-semibold text-gray-800">Visual Search Result:</p>
-          <p className="mt-1 text-gray-700">{visualResult.description}</p>
+      {/** ─── MIDDLE 1/3: Visual Search ──────────────────────────────────── */}
+      <div className="h-1/3 overflow-y-auto p-4">
+        <form onSubmit={handleVisualSearch} className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={visualQuery}
+            onChange={(e) => setVisualQuery(e.target.value)}
+            placeholder="Visual search: e.g. “red car”"
+            className="flex-1 border rounded-xl p-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
           <button
-            onClick={() => onTimestampClick(visualResult.timestamp)}
-            className="mt-2 text-blue-600 underline"
+            type="submit"
+            disabled={loadingVisual}
+            className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition"
           >
-            Jump to {formatTimestamp(visualResult.timestamp)}
+            {loadingVisual ? "Searching…" : "Search"}
           </button>
-        </div>
-      )}
+        </form>
 
-      {/* ─── Divider ───────────────────────────────────────────────────────────── */}
-      <hr className="border-gray-300" />
-
-      {/* ─── Chat Form ─────────────────────────────────────────────────────────── */}
-      <form onSubmit={handleChatSubmit} className="flex gap-2">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question about the video..."
-          className="flex-1 border rounded p-2"
-        />
-        <button
-          type="submit"
-          disabled={loadingChat}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-        >
-          {loadingChat ? "Sending…" : "Send"}
-        </button>
-      </form>
-
-      {/* ─── Chat History ──────────────────────────────────────────────────────── */}
-      <div className="max-h-64 overflow-y-auto space-y-4">
-        {history.map((qa, idx) => (
-          <div key={idx} className="border p-3 rounded bg-white">
-            <p className="font-semibold text-gray-800">Q: {qa.question}</p>
-            <div
-              className="mt-1 text-gray-700"
-              onClick={handleLinkClick}
-              dangerouslySetInnerHTML={{ __html: qa.answer }}
-            />
+        {visualResult && (
+          <div className="border p-3 rounded-lg bg-gray-50">
+            <p className="font-semibold text-gray-800">Visual Search Result:</p>
+            <p className="mt-1 text-gray-700">{visualResult.description}</p>
+            <button
+              onClick={() => onTimestampClick(visualResult.timestamp)}
+              className="mt-2 text-blue-600 underline"
+            >
+              Jump to {formatTimestamp(visualResult.timestamp)}
+            </button>
           </div>
-        ))}
+        )}
+      </div>
+
+      {/** ─── BOTTOM 1/3: Normal Chat ────────────────────────────────────── */}
+      <div className="h-1/3 flex flex-col p-4 overflow-y-auto">
+        <form onSubmit={handleChatSubmit} className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask a question about the video..."
+            className="flex-1 border rounded-xl p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            disabled={loadingChat}
+            className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition"
+          >
+            {loadingChat ? "Sending…" : "Send"}
+          </button>
+        </form>
+
+        {/** Chat history (no “No messages yet” text)—just blank if empty */}
+        <div
+          className="flex-1 overflow-y-auto space-y-4"
+          onClick={handleLinkClick}
+        >
+          {history.map((qa, idx) => (
+            <div key={idx} className="border p-3 rounded-lg bg-white">
+              <p className="font-semibold text-gray-800">Q: {qa.question}</p>
+              <div
+                className="mt-1 text-gray-700"
+                dangerouslySetInnerHTML={{ __html: qa.answer }}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
