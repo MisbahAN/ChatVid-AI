@@ -17,6 +17,10 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
 import asyncio
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+
 
 from transcript import fetch_transcript
 from sectioning import get_sectioned_summary
@@ -28,6 +32,20 @@ from visual_search import extract_frames, process_all_frames_async, semantic_sea
 # 2. App Initialization
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # or ["http://localhost:3000"] to be stricter
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+
+class SectionsRequest(BaseModel):
+    video_url: str
+    api_key: str
 
 
 
@@ -62,9 +80,9 @@ def get_transcript(req: TranscriptRequest):
 #    - Returns timestamped section summaries using Gemini
 
 @app.post("/sections")
-def get_sections(req: TranscriptRequest):
-    transcript = fetch_transcript(req.video_url)
-    return get_sectioned_summary(transcript, req.video_url)
+def get_sections(req: SectionsRequest):
+    return get_sectioned_summary(req.video_url, req.api_key)
+
 
 
 

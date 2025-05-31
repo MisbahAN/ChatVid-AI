@@ -53,6 +53,7 @@ ChatVid-AI/
 ### Prerequisites
 
 - Python 3.8+
+- Node.js 16+ and npm
 - Gemini API key
 - (Optional) Webshare proxy account for YouTube transcript API
 
@@ -75,8 +76,9 @@ ChatVid-AI/
    .\venv\Scripts\activate
    ```
 
-3. **Install dependencies**
+3. **Install Python dependencies**
    ```bash
+   cd server
    pip install -r requirements.txt
    ```
 
@@ -86,11 +88,62 @@ ChatVid-AI/
    GEMINI_API_KEY=your_gemini_key_here
    ```
 
-5. **Run the server**
+5. **Run the backend server**
    ```bash
+   # Make sure you're in the server directory
    cd server
-   uvicorn main:app --reload
+   uvicorn main:app --reload --port 8000
    ```
+   The backend will be available at `http://localhost:8000`
+
+### Frontend Setup
+
+1. **Install Node.js dependencies**
+   ```bash
+   # Navigate to the client directory
+   cd client
+
+   # Install core dependencies
+   npm install next react react-dom
+   
+   # Install TypeScript and type definitions
+   npm install typescript @types/react @types/node --save-dev
+   
+   # Install Tailwind CSS and its dependencies
+   npm install tailwindcss postcss autoprefixer
+   npx tailwindcss init -p
+   
+   # Install additional required packages
+   npm install axios react-player
+   ```
+
+2. **Run the frontend development server**
+   ```bash
+   # Make sure you're in the client directory
+   cd client
+   npm run dev
+   ```
+   The frontend will be available at `http://localhost:3000`
+
+### File Structure and Responsibilities
+
+#### Backend Files (`/server`)
+- `main.py`: FastAPI application setup, route definitions, and API endpoints
+- `transcript.py`: YouTube video transcript extraction with proxy support
+- `gemini_utils.py`: Gemini API integration for chat, embeddings, and RAG functionality
+- `sectioning.py`: Video content analysis and timestamped section generation
+- `visual_search.py`: Frame extraction and visual content search implementation
+- `frames/`: Temporary storage directory for extracted video frames
+
+#### Frontend Files (`/client`)
+- `app/`: Next.js 13+ app directory containing page components and layouts
+- `components/`: Reusable React components
+- `lib/`: Utility functions and API clients
+- `styles/`: Global styles and Tailwind CSS configuration
+- `public/`: Static assets
+- `next.config.js`: Next.js configuration
+- `tailwind.config.ts`: Tailwind CSS configuration
+- `tsconfig.json`: TypeScript configuration
 
 ## 🧠 How It Works
 
@@ -131,9 +184,9 @@ ChatVid-AI/
 - [x] Visual scene search: embed frames and match with user text
 
 ### 🔜 Phase 2: Frontend (In Progress)
-- [ ] Project Setup: Next.js + TypeScript + Tailwind CSS
-- [ ] User Inputs: YouTube URL + Gemini API Key
-- [ ] Video Display + Section Summaries
+- [x] Project Setup: Next.js + TypeScript + Tailwind CSS
+- [x] User Inputs: YouTube URL + Gemini API Key
+- [x] Video Display + Section Summaries
 - [ ] Chat Interface (Transcript Q&A)
 - [ ] Visual Search (Semantic Frame Search)
 

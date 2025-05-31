@@ -1,0 +1,28 @@
+# ⬇️ Node.js / Next.js / Tailwind
+node_modules/
+.next/
+out/
+
+# ⬇️ Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ⬇️ OS files
+.DS_Store
+Thumbs.db
+
+# ⬇️ Env vars (optional if you store anything frontend-side later)
+.env.local
+.env.development
+.env.production
+
+# ⬇️ IDE/editor settings (optional)
+.vscode/
+.idea/
+
+# ⬇️ Optional: Tailwind JIT cache (if it shows up)
+.tailwind-cache/
+
+# ⬇️ Optional build artifacts (Vercel builds or test builds)
+dist/

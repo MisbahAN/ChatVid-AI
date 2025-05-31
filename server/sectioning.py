@@ -4,49 +4,28 @@
 # - short section summaries
 # - clickable timestamp links
 
-
-
 # 1. Imports & Configuration
 #    - genai: Gemini API
-#    - dotenv: loads API key from .env file
-#    - os: environment variable access
 #    - generate_timestamp_link: adds clickable timestamp to section
-
 import google.generativeai as genai
-from dotenv import load_dotenv
-import os
 from gemini_utils import generate_timestamp_link
-
-load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-
 
 # 2. format_time(seconds)
 #    - Converts float seconds to MM:SS string format
-
 def format_time(seconds: float) -> str:
     minutes = int(seconds // 60)
     secs = int(seconds % 60)
     return f"{minutes:02}:{secs:02}"
 
-
-
-# 3. get_sectioned_summary(transcript, video_url)
+# 3. get_sectioned_summary(transcript, video_url, api_key)
 #    - Prompts Gemini to return section summaries with timestamps
 #    - Adds YouTube timestamp links using start times
+def get_sectioned_summary(video_url: str, api_key: str):
+    from transcript import fetch_transcript  # keep import here to avoid circular import issues
+    transcript = fetch_transcript(video_url)
 
-def get_sectioned_summary(transcript: list[dict], video_url: str) -> list[dict]:
-    """
-    Uses Gemini to break the transcript into timestamped sections with summaries.
+    genai.configure(api_key=api_key)  # ✅ dynamically configure Gemini with user key
 
-    Args:
-        transcript (list[dict]): List of transcript segments with 'text', 'start', 'duration'
-        video_url (str): Original YouTube video URL for generating clickable timestamp links
-
-    Returns:
-        list[dict]: List of sections with 'start', 'end', 'summary', and 'link'
-    """
     combined_text = ""
     print(f"🔎 Prompting Gemini for section summaries... ({len(transcript)} segments)")
 
@@ -57,7 +36,6 @@ def get_sectioned_summary(transcript: list[dict], video_url: str) -> list[dict]:
     if len(combined_text) > 25000:
         print("⚠️ Transcript is very long. Consider splitting into smaller chunks later.")
 
-    # ─── Gemini Prompt with embedded "system-like" instruction ───
     prompt = f"""
         SYSTEM INSTRUCTION:
         You are a helpful assistant that chunks YouTube video transcripts into useful summaries.
@@ -72,7 +50,7 @@ def get_sectioned_summary(transcript: list[dict], video_url: str) -> list[dict]:
         Each section should have:
         - a start time
         - an end time
-        - a 3-6 word summary of what’s going on
+        - a 3–6 word summary of what’s going on
 
         Constraints:
         - Return about 3–5 sections for a 10-minute video
