@@ -90,19 +90,19 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Top: Player + Sections */}
-      <div className="flex flex-col md:flex-row flex-grow">
-        {/* Left column: iframe player */}
-        <div className="md:w-2/3 w-full h-[360px] md:h-auto bg-black">
-          <VideoPlayer videoId={videoId} startSec={currentStartSec} />
-        </div>
+    <div className="flex flex-col md:flex-row min-h-screen">
+      {/* Left side: Video */}
+      <div className="md:w-2/3 w-full h-[50vh] md:h-screen bg-black">
+        <VideoPlayer videoId={videoId} startSec={currentStartSec} />
+      </div>
 
-        {/* Right column: Section list */}
-        <div className="md:w-1/3 w-full overflow-y-auto border-l border-gray-300 p-4">
+      {/* Right side: Sections + Chat */}
+      <div className="md:w-1/3 w-full flex flex-col border-l border-gray-300">
+        {/* Sections adjusts height to its content, chat fills the rest */}
+        <div className="overflow-y-auto p-4 bg-gray-50">
           <h2 className="text-xl font-semibold mb-2">Sections</h2>
           {loadingSections ? (
-            <p>Loading sections…</p>
+            <p className="text-gray-500">Loading sections…</p>
           ) : (
             <SectionList
               sections={sections}
@@ -110,14 +110,14 @@ export default function ChatPage() {
             />
           )}
         </div>
-      </div>
 
-      {/* Bottom: Chat box */}
-      <div className="w-full border-t border-gray-300 p-4">
-        <ChatBox
-          videoUrl={videoUrlParam}
-          onTimestampClick={handleTimestampClick}
-        />
+        {/* ChatBox fills remaining vertical space */}
+        <div className="flex-1 overflow-y-auto border-t border-gray-300 bg-white">
+          <ChatBox
+            videoUrl={videoUrlParam}
+            onTimestampClick={handleTimestampClick}
+          />
+        </div>
       </div>
     </div>
   );

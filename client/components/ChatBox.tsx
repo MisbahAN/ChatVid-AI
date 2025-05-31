@@ -32,7 +32,7 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
     return NaN;
   }
 
-  // Format seconds into "M:SS" (dropping any leading hours if zero)
+  // Format seconds into "M:SS"
   function formatTimestamp(seconds: number): string {
     if (seconds < 0 || isNaN(seconds)) return "0:00";
     const hrs = Math.floor(seconds / 3600);
@@ -57,7 +57,7 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       .replace(/'/g, "&#39;");
   }
 
-  // Convert raw answer text into HTML with local ?start= links styled in blue
+  // Convert raw answer into HTML with local ?start= links in blue underline
   function transformAnswer(raw: string): string {
     let text = raw;
 
@@ -73,30 +73,24 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       text = text.slice(1, -1);
     }
 
-    // 3. Replace YouTube-style <a href="…&t=XXs">TIMESTAMP</a> with local mm:ss links
+    // 3. Convert YouTube‐style <a href="…&t=XXs">…</a> into local mm:ss links
     let idx = 0;
     const placeholders: Record<string, string> = {};
     const ytLinkRegex =
       /<a(?: [^>]*?)?href="(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?[^"]*?&t=(\d+)s?[^"]*)"[^>]*>([^<]+)<\/a>/g;
-    text = text.replace(
-      ytLinkRegex,
-      (_match, secs: string, _innerTs: string) => {
-        const totalSecs = parseInt(secs, 10);
-        if (isNaN(totalSecs)) {
-          return "";
-        }
-        const display = formatTimestamp(totalSecs);
-        const key = `__PLACEHOLDER_${idx}__`;
-        placeholders[
-          key
-        ] = `<a href="?start=${totalSecs}" class="text-blue-600 underline">${display}</a>`;
-        idx += 1;
-        return key;
-      }
-    );
+    text = text.replace(ytLinkRegex, (_match, secs: string) => {
+      const totalSecs = parseInt(secs, 10);
+      if (isNaN(totalSecs)) return "";
+      const display = formatTimestamp(totalSecs);
+      const key = `__PLACEHOLDER_${idx}__`;
+      placeholders[
+        key
+      ] = `<a href="?start=${totalSecs}" class="text-blue-600 underline">${display}</a>`;
+      idx += 1;
+      return key;
+    });
 
-    // 4. Replace any plain‐text range e.g. "00:00:27--00:00:43" or "0:00:27–0:00:43"
-    //    into "(<a href="?start=27">0:27</a>–0:43)".
+    // 4. Convert ranges "00:00:27--00:00:43" or "0:00:27–0:00:43" to "(0:27–0:43)"
     const rangeRegex =
       /(\d{1,2}:\d{2}(?::\d{2})?)(?:-{2}|-|\u2013)(\d{1,2}:\d{2}(?::\d{2})?)/g;
     text = text.replace(
@@ -117,17 +111,13 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       }
     );
 
-    // 5. Replace any single plain timestamp "HH:MM:SS" or "MM:SS" into "<a href="?start=SSS">M:SS</a>"
+    // 5. Convert single timestamps "HH:MM:SS" or "MM:SS" to "<a href="?start=XX">M:SS</a>"
     const singleRegex = /(\d{1,2}:\d{2}(?::\d{2})?)/g;
     text = text.replace(singleRegex, (_match, ts: string) => {
-      // Avoid reprocessing ranges already captured
-      if (ts.includes("--") || ts.includes("–")) {
-        return ts;
-      }
+      // Skip if part of a range
+      if (ts.includes("--") || ts.includes("–")) return ts;
       const secs = parseTimestamp(ts);
-      if (isNaN(secs)) {
-        return escapeHtml(ts);
-      }
+      if (isNaN(secs)) return escapeHtml(ts);
       const disp = formatTimestamp(secs);
       const key = `__PLACEHOLDER_${idx}__`;
       placeholders[
@@ -137,12 +127,11 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
       return key;
     });
 
-    // 6. Escape all remaining text
+    // 6. Escape remaining text, then restore placeholders
     let escaped = "";
     if (Object.keys(placeholders).length === 0) {
       escaped = escapeHtml(text);
     } else {
-      // Temporarily wrap placeholders so we don't escape them
       const combined = text.replace(
         new RegExp(
           Object.keys(placeholders)
@@ -153,7 +142,6 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
         (match) => `@@${match}@@`
       );
       escaped = escapeHtml(combined);
-      // Restore placeholders (removing the markers)
       for (const key in placeholders) {
         const placeholderKey = `@@${key}@@`;
         escaped = escaped.replace(
@@ -166,7 +154,9 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
     return escaped;
   }
 
-  const handleSend = async () => {
+  // New handleSend now takes event so Enter can submit
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!input.trim()) return;
 
     const apiKey = localStorage.getItem("GEMINI_API_KEY") || "";
@@ -185,7 +175,7 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
     }
   };
 
-  // Intercept clicks on <a href="?start=XX">…</a> and jump the video
+  // Intercept clicks on <a href="?start=XX">
   const handleLinkClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (target.tagName === "A") {
@@ -208,8 +198,8 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
 
   return (
     <div className="p-4 border-t border-gray-300 space-y-4">
-      {/* Input */}
-      <div className="flex gap-2">
+      {/* Wrap input/button in a form so Enter works */}
+      <form onSubmit={handleSend} className="flex gap-2">
         <input
           type="text"
           value={input}
@@ -218,13 +208,13 @@ export default function ChatBox({ videoUrl, onTimestampClick }: ChatBoxProps) {
           className="flex-1 border rounded p-2"
         />
         <button
-          onClick={handleSend}
+          type="submit"
           disabled={loading}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
         >
           {loading ? "Sending…" : "Send"}
         </button>
-      </div>
+      </form>
 
       {/* History */}
       <div className="max-h-64 overflow-y-auto space-y-4">
