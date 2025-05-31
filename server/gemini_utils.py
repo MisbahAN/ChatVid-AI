@@ -164,8 +164,3 @@ async def async_analyze_image(frame_path: str, client: httpx.AsyncClient) -> str
 #         print(answer)
 
 # Sample output:
-# 🎬 Fetching transcript for video ID: dQw4w9WgXcQ
-# 🧠 Gemini Answer with Hyperlinks:
-# 1. [<a href="...">00:43</a>]
-# 2. [<a href="...">01:25</a>]
-# ...
