@@ -108,7 +108,6 @@ ChatVid-AI/
 5. **Run the backend server**
    ```bash
    # Make sure you're in the server directory
-   cd server
    uvicorn main:app --reload --port 8000
    ```
    The backend will be available at `http://localhost:8000`
