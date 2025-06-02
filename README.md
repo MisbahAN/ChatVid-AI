@@ -94,8 +94,8 @@ ChatVid-AI/
 3. **Install Python dependencies**
 
    ```bash
-   cd server
    pip install -r requirements.txt
+   cd server
    ```
 
 4. **Configure environment variables**
