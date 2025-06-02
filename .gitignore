@@ -48,7 +48,6 @@ out/
 
 # Local data / secrets / test output
 *.sqlite3
-*.json
 tmp/
 
 # Ignore extracted video frames
