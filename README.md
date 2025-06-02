@@ -98,14 +98,7 @@ ChatVid-AI/
    cd server
    ```
 
-4. **Configure environment variables**
-   Create a `.env` file in the server directory:
-
-   ```
-   GEMINI_API_KEY=your_gemini_key_here
-   ```
-
-5. **Run the backend server**
+4. **Run the backend server**
    ```bash
    # Make sure you're in the server directory
    uvicorn main:app --reload --port 8000
