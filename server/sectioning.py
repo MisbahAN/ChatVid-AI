@@ -1,42 +1,50 @@
-# This script takes a YouTube video transcript and sends it to Gemini
-# to generate timestamped section summaries. The output includes:
-# - start & end times
-# - short section summaries
-# - clickable timestamp links
-
-# 1. Imports & Configuration
-#    - genai: Gemini API
-#    - generate_timestamp_link: adds clickable timestamp to section
 import google.generativeai as genai
 from gemini_utils import generate_timestamp_link
 
-# 2. format_time(seconds)
-#    - Converts float seconds to MM:SS string format
 def format_time(seconds: float) -> str:
     minutes = int(seconds // 60)
     secs = int(seconds % 60)
     return f"{minutes:02}:{secs:02}"
 
-# 3. get_sectioned_summary(transcript, video_url, api_key)
-#    - Prompts Gemini to return section summaries with timestamps
-#    - Adds YouTube timestamp links using start times
 def get_sectioned_summary(video_url: str, api_key: str):
-    from transcript import fetch_transcript  # keep import here to avoid circular import issues
+    from transcript import fetch_transcript
     transcript = fetch_transcript(video_url)
+    print(f"DEBUG: Transcript length in /sections: {len(transcript)}")
+    print(f"DEBUG: First 2 segments: {transcript[:2]}")
 
-    genai.configure(api_key=api_key)  # ✅ dynamically configure Gemini with user key
+    if not transcript:
+        print("❌ No transcript found. Skipping Gemini sectioning.")
+        return [{"error": "No transcript available for this video."}]
 
-    combined_text = ""
+    genai.configure(api_key=api_key)
     print(f"🔎 Prompting Gemini for section summaries... ({len(transcript)} segments)")
 
-    for item in transcript:
-        start_time = format_time(item["start"])
-        combined_text += f"[{start_time}] {item['text']}\n"
+    lines = [f"[{format_time(item['start'])}] {item['text']}" for item in transcript]
 
-    if len(combined_text) > 25000:
-        print("⚠️ Transcript is very long. Consider splitting into smaller chunks later.")
+    def chunk_lines(lines, max_chars=7000):
+        chunks, current_chunk = [], []
+        current_len = 0
 
-    prompt = f"""
+        for line in lines:
+            if current_len + len(line) > max_chars:
+                chunks.append("\n".join(current_chunk))
+                current_chunk, current_len = [], 0
+            current_chunk.append(line)
+            current_len += len(line)
+
+        if current_chunk:
+            chunks.append("\n".join(current_chunk))
+
+        return chunks
+
+    text_chunks = chunk_lines(lines)
+    print(f"🧠 Splitting transcript into {len(text_chunks)} chunk(s) for Gemini")
+
+    model = genai.GenerativeModel("gemini-1.5-pro")
+    all_sections = []
+
+    for i, chunk in enumerate(text_chunks):
+        prompt = f"""
         SYSTEM INSTRUCTION:
         You are a helpful assistant that chunks YouTube video transcripts into useful summaries.
         Always follow the user's format and constraints exactly.
@@ -53,10 +61,14 @@ def get_sectioned_summary(video_url: str, api_key: str):
         - a 3–6 word summary of what’s going on
 
         Constraints:
-        - Return about 3–5 sections for a 10-minute video
-        - Return about 15–20 for a 1-hour video
-        - Sections should be around 1–3 minutes each
-        - Don’t create sections shorter than 30 seconds unless absolutely needed
+        - Prioritize logical and thematic boundaries when splitting the transcript (e.g., new topic, question, or segment).
+        - Avoid over-segmenting long videos; prefer **fewer, more meaningful sections**.
+        - For a 10-minute video, return around **3–5** sections.
+        - For a 30-minute video, return around **6–10** sections.
+        - For a 1-hour video, return around **8–15** sections.
+        - For a 2-hour video, return around **10–18** sections.
+        - Typical section length should be **3–6 minutes**, but allow longer if the topic continues.
+        - **Do not create sections shorter than 1 minute**, unless there's a clear, standalone transition or shift.
 
         Use this format:
         [
@@ -65,57 +77,20 @@ def get_sectioned_summary(video_url: str, api_key: str):
         ]
 
         Transcript:
-        {combined_text}
-    """
+        {chunk}
+        """
+        try:
+            response = model.generate_content(prompt)
+            cleaned = response.text.replace("```json", "").replace("```", "").strip()
+            parsed = eval(cleaned)
+            all_sections.extend(parsed)
 
-    model = genai.GenerativeModel("gemini-1.5-pro")
-    response = model.generate_content(prompt)
+        except Exception as e:
+            print(f"❌ Gemini error on chunk {i}: {e}")
+            print("Raw response:", response.text)
+            continue
 
-    try:
-        cleaned_output = response.text.replace("```json", "").replace("```", "").strip()
-        parsed_sections = eval(cleaned_output)
+    for section in all_sections:
+        section["link"] = generate_timestamp_link(video_url, section["start"])
 
-        for section in parsed_sections:
-            section["link"] = generate_timestamp_link(video_url, section["start"])
-
-        return parsed_sections
-
-    except Exception as e:
-        print("Error parsing Gemini output:", e)
-        print("Raw response:", response.text)
-        return []
-
-
-
-# 4. Optional test block
-#    - Allows you to run this file standalone to test Gemini summarization
-
-# if __name__ == "__main__":
-#     from transcript import fetch_transcript
-
-#     url = "https://www.youtube.com/watch?v=LxvErFkBXPk"
-#     transcript = fetch_transcript(url)
-
-#     print("✅ Transcript fetched?", bool(transcript))
-#     print("📄 Length:", len(transcript))
-#     if transcript:
-#         print("🧪 First segment:", transcript[0])
-
-#     if not transcript:
-#         print("❗ No transcript found for this video. Try another one.")
-#     else:
-#         sections = get_sectioned_summary(transcript, url)
-#         for sec in sections:
-#             print(sec)
-
-# OUTPUT:
-# 🎬 Fetching transcript for video ID: LxvErFkBXPk
-# ✅ Transcript fetched? True
-# 📄 Length: 209
-# 🧪 First segment: {'text': '[MUSIC PLAYING]', 'start': 0.0, 'duration': 2.79}
-# 🔎 Prompting Gemini for section summaries... (209 segments)
-# {'start': '00:00', 'end': '01:18', 'summary': 'Gemini 2.5 Pro introduction', 'link': 'https://www.youtube.com/watch?v=LxvErFkBXPk&t=0s'}
-# {'start': '01:18', 'end': '03:33', 'summary': 'New AI Platform and Features', 'link': 'https://www.youtube.com/watch?v=LxvErFkBXPk&t=78s'}
-# {'start': '03:33', 'end': '05:22', 'summary': 'Gemini Flash, Diffusion and Search', 'link': 'https://www.youtube.com/watch?v=LxvErFkBXPk&t=213s'}
-# {'start': '05:22', 'end': '07:44', 'summary': 'AI Mode in Search and Shopping', 'link': 'https://www.youtube.com/watch?v=LxvErFkBXPk&t=322s'}
-# {'start': '07:44', 'end': '09:56', 'summary': 'SynthID, Flow, Android XR, Closing', 'link': 'https://www.youtube.com/watch?v=LxvErFkBXPk&t=464s'}
+    return all_sections

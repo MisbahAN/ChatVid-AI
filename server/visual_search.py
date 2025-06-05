@@ -194,27 +194,3 @@ def semantic_search(query: str, frames: list[dict]) -> dict:
         }
     else:
         return {}
-
-
-
-# 7. Optional Test Block
-#    - Tests full pipeline: YouTube video ➝ Extract frames ➝ Async analyze + embed ➝ Semantic search
-
-# if __name__ == "__main__":
-#     import sys
-#
-#     url = "https://www.youtube.com/watch?v=6Xf858oNEak"
-#
-#     # Step 1: Extract frames every 5 seconds
-#     extract_frames(url, interval=5)
-#
-#     # Step 2: Run async frame analysis
-#     async def run_pipeline():
-#         frames = await process_all_frames_async("server/frames")
-#         result = semantic_search("When is the frosting being put on the cake?", frames)
-#
-#         print("\n📍 Best Match:")
-#         print(result)
-#
-#     # Run the async pipeline
-#     asyncio.run(run_pipeline())

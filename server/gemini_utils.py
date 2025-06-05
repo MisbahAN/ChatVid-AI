@@ -1,19 +1,3 @@
-# This module contains helper utilities for working with Gemini and YouTube:
-# - Formatting time
-# - Generating timestamped YouTube links
-# - Embedding hyperlinks in Gemini's output
-# - Answering questions using the transcript via Gemini
-# - Embedding images using Gemini multimodal embedding
-
-
-
-# 1. Imports
-#    - genai: Gemini API access
-#    - dotenv + os: Load Gemini API key from environment
-#    - re: Regex for timestamp hyperlinking
-#    - httpx: Async HTTP client for async Gemini calls
-#    - base64: Image encoding for inline data
-
 import google.generativeai as genai
 from dotenv import load_dotenv
 import os
@@ -21,34 +5,15 @@ import re
 import httpx
 import base64
 
-
-
-# 2. Load API Key and Configure Gemini
-
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-
-
-# 3. Gemini Model Setup
-#    - Uses multimodal model (supports text + image)
-
 gemini_model = genai.GenerativeModel("gemini-1.5-pro")
-
-
-
-# 4. format_time(seconds)
-#    - Converts float seconds to mm:ss format
 
 def format_time(seconds: float) -> str:
     minutes = int(seconds // 60)
     secs = int(seconds % 60)
     return f"{minutes:02}:{secs:02}"
-
-
-
-# 5. generate_timestamp_link(video_url, timestamp_str)
-#    - Converts "mm:ss" timestamp into YouTube link with t= param
 
 def generate_timestamp_link(video_url: str, timestamp_str: str) -> str:
     try:
@@ -58,11 +23,6 @@ def generate_timestamp_link(video_url: str, timestamp_str: str) -> str:
     except Exception as e:
         print("❌ Error creating timestamp link:", e)
         return video_url
-
-
-
-# 6. hyperlink_timestamps_in_text(answer, video_url)
-#    - Finds all mm:ss timestamps in string and replaces them with YouTube hyperlinks
 
 def hyperlink_timestamps_in_text(answer: str, video_url: str) -> str:
     pattern = r"\b(\d{2}):(\d{2})\b"
@@ -74,39 +34,61 @@ def hyperlink_timestamps_in_text(answer: str, video_url: str) -> str:
 
     return re.sub(pattern, replacer, answer)
 
-
-
-# 7. answer_question(transcript, question, video_url)
-#    - Builds context from transcript and asks Gemini to answer user query
-#    - Hyperlinks timestamps in response
-
 def answer_question(transcript: list[dict], question: str, video_url: str) -> str:
-    context = ""
-    for item in transcript:
-        start_time = format_time(item["start"])
-        context += f"[{start_time}] {item['text']}\n"
+    if not transcript:
+        return "⚠️ Sorry, this video has no transcript available. Try another video."
 
-    prompt = f"""
-        You are a helpful assistant answering questions about a YouTube video.
-        Use only the transcript below. Try to include the timestamp of relevant parts in your answer.
+    def format_chunk(items):
+        return "\n".join(f"[{format_time(i['start'])}] {i['text']}" for i in items)
 
-        Transcript:
-        {context}
+    def chunk_transcript(transcript, max_chars=5000):
+        chunks, current_chunk, current_len = [], [], 0
 
-        Question: {question}
-        Answer:
-    """
+        for item in transcript:
+            line = f"[{format_time(item['start'])}] {item['text']}\n"
+            if current_len + len(line) > max_chars:
+                chunks.append(current_chunk)
+                current_chunk, current_len = [], 0
+            current_chunk.append(item)
+            current_len += len(line)
 
-    response = gemini_model.generate_content(prompt)
-    answer = response.text.strip()
-    return hyperlink_timestamps_in_text(answer, video_url)
+        if current_chunk:
+            chunks.append(current_chunk)
 
+        return chunks
 
+    chunks = chunk_transcript(transcript)
+    print(f"💬 Q&A split into {len(chunks)} chunk(s)")
 
-# 8. async_analyze_image(frame_path, client)
-#    - Sends image + prompt to Gemini via POST request
-#    - Uses Gemini's v1beta API for async image analysis
-#    - Returns text description from response
+    model = genai.GenerativeModel("gemini-1.5-pro")
+    best_answer = ""
+    most_timestamps = 0
+
+    for i, chunk in enumerate(chunks):
+        chunk_text = format_chunk(chunk)
+        prompt = f"""
+            You are a helpful assistant answering questions about a YouTube video.
+            Use only the transcript below. Include timestamps in MM:SS format when relevant.
+
+            Transcript:
+            {chunk_text}
+
+            Question: {question}
+            Answer:
+        """
+        try:
+            response = model.generate_content(prompt)
+            answer = response.text.strip()
+            timestamp_count = len(re.findall(r"\b\d{2}:\d{2}\b", answer))
+
+            if timestamp_count > most_timestamps:
+                best_answer = answer
+                most_timestamps = timestamp_count
+
+        except Exception as e:
+            print(f"⚠️ Error answering chunk {i}: {e}")
+
+    return hyperlink_timestamps_in_text(best_answer or "Sorry, I couldn't find a good answer.", video_url)
 
 async def async_analyze_image(frame_path: str, client: httpx.AsyncClient) -> str:
     with open(frame_path, "rb") as img_file:
@@ -143,24 +125,3 @@ async def async_analyze_image(frame_path: str, client: httpx.AsyncClient) -> str
     except:
         print(f"❌ Failed to parse Gemini response: {result}")
         return "Error"
-
-
-
-# 9. Optional Test Block
-#    - Lets you run this file directly to test transcript QA flow
-
-# if __name__ == "__main__":
-#     from transcript import fetch_transcript
-#
-#     url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-#     transcript = fetch_transcript(url)
-#
-#     if not transcript:
-#         print("❗ No transcript found for this video. Try another one.")
-#     else:
-#         question = "How many times does he say the phrase 'Never gonna give you up' and what are the time stamps for each time?"
-#         answer = answer_question(transcript, question, url)
-#         print("\n🧠 Gemini Answer with Hyperlinks:\n")
-#         print(answer)
-
-# Sample output:
