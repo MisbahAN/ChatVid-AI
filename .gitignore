@@ -52,3 +52,6 @@ tmp/
 
 # Ignore extracted video frames
 server/frames/
+
+# Ignore extracted transcripts
+server/transcript.json

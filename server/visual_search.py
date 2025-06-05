@@ -1,55 +1,29 @@
-# This module handles visual search by:
-# - Downloading a YouTube video
-# - Extracting frames every N seconds
-# - Analyzing each frame using Gemini multimodal API
-# - Embedding frame descriptions
-# - Performing semantic search using cosine similarity
-
-
-
-# 1. Imports
-#    - os, shutil, subprocess: filesystem and shell utilities
-#    - cv2: OpenCV for video frame extraction
-#    - numpy: needed for cosine similarity
-#    - Path, timedelta: for saving files and handling timestamps
-#    - gemini_utils: async Gemini image analysis
-#    - sklearn: cosine similarity metric
-#    - genai, dotenv, asyncio, httpx: Gemini config + async HTTP requests
-
 import os
 import cv2
 import numpy as np
 from pathlib import Path
 from datetime import timedelta
 import subprocess
-from gemini_utils import async_analyze_image
 import shutil
 from sklearn.metrics.pairwise import cosine_similarity
 import google.generativeai as genai
-from dotenv import load_dotenv
 import asyncio
 import httpx
 
+from gemini_utils import async_analyze_image
 
-
-# 2. Load API Key and Configure Gemini
-
-load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-
-
-# 3. download_video(video_url, output_path)
-#    - Uses yt-dlp to download and merge best quality streams
-#    - Saves as temp_video.mp4 in given directory
 
 def download_video(video_url: str, output_path: str) -> str:
+    """
+    Uses yt-dlp to download best video+audio, merges into temp_video.mp4 under output_path.
+    """
     output_file = os.path.join(output_path, "temp_video.mp4")
     command = [
         "yt-dlp",
         "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
         "--merge-output-format", "mp4",
-        "-o", output_file,
+        "-o",
+        output_file,
         video_url,
     ]
     print("⬇️ Downloading video with yt-dlp and merging streams...")
@@ -57,21 +31,18 @@ def download_video(video_url: str, output_path: str) -> str:
     return output_file
 
 
-
-# 4. extract_frames(video_url, interval)
-#    - Extracts one frame every `interval` seconds
-#    - Resizes frame to 320x180
-#    - Saves frame metadata with timestamp and path
-
-
 def extract_frames(video_url: str, interval: int = 5) -> list[dict]:
-    # Always write into ChatVid-AI/server/frames
+    """
+    1) Deletes any existing 'frames' folder, recreates it.
+    2) Downloads the YouTube video as temp_video.mp4.
+    3) Extracts one frame every `interval` seconds, resizes to 320×180, saves under 'frames'.
+    4) Returns a list of {timestamp: "HH:MM:SS", seconds: int, image_path: str}.
+    """
     frames_dir = Path(__file__).parent / "frames"
     if frames_dir.exists():
         shutil.rmtree(frames_dir)
     frames_dir.mkdir(parents=True, exist_ok=True)
 
-    # Download into ChatVid-AI/server/temp_video.mp4
     video_path = download_video(video_url, str(Path(__file__).parent))
 
     cap = cv2.VideoCapture(video_path)
@@ -106,14 +77,22 @@ def extract_frames(video_url: str, interval: int = 5) -> list[dict]:
     return results
 
 
+async def process_all_frames_async(
+    frame_dir: str = None,
+    api_key: str = None
+) -> list[dict]:
+    """
+    1) Configures Gemini with api_key.
+    2) For every JPG in 'frame_dir', calls async_analyze_image(..., api_key) to get a description.
+    3) Embeds that description via Gemini's embed API.
+    4) Returns a list of {timestamp: int, description: str, embedding: [float,...]}.
+    """
+    if api_key is None:
+        raise ValueError("API key is required for frame analysis.")
 
-# 5. process_all_frames_async(frame_dir)
-#    - Asynchronously analyzes frames using Gemini multimodal API
-#    - Embeds each description and appends timestamp, description, and embedding
-#    - Replaces original frame-by-frame processor and embedding step
+    # 1) Configure Gemini for embedding
+    genai.configure(api_key=api_key)
 
-async def process_all_frames_async(frame_dir: str = None):
-    # Default to ChatVid-AI/server/frames if no argument is given
     if frame_dir is None:
         frame_dir = str(Path(__file__).parent / "frames")
 
@@ -123,8 +102,9 @@ async def process_all_frames_async(frame_dir: str = None):
     frame_files = sorted(Path(frame_dir).glob("*.jpg"))
 
     async with httpx.AsyncClient(timeout=60) as client:
+        # Kick off all Gemini image‐analysis calls in parallel
         tasks = [
-            async_analyze_image(str(frame), client)
+            async_analyze_image(str(frame), client, api_key)
             for frame in frame_files
         ]
 
@@ -134,14 +114,14 @@ async def process_all_frames_async(frame_dir: str = None):
             timestamp_sec = int(frame_file.stem.split("_")[-1])
 
             try:
-                response = genai.embed_content(
+                resp = genai.embed_content(
                     model="models/embedding-001",
                     content=desc,
                     task_type="RETRIEVAL_QUERY"
                 )
-                embedding = response["embedding"]
+                embedding = resp["embedding"]
             except Exception as e:
-                print(f"❌ Failed to embed description at frame {frame_file.name}: {e}")
+                print(f"❌ Failed to embed description at {frame_file.name}: {e}")
                 embedding = None
 
             results.append({
@@ -154,21 +134,30 @@ async def process_all_frames_async(frame_dir: str = None):
     return results
 
 
+def semantic_search(
+    query: str,
+    frames: list[dict],
+    api_key: str
+) -> dict:
+    """
+    1) Configures Gemini with api_key.
+    2) Embeds the text query.
+    3) Computes cosine similarity vs. each frame's embedding.
+    4) Returns {timestamp, score, description} for the best match.
+    """
+    if api_key is None:
+        raise ValueError("API key is required for semantic search.")
 
-
-# 6. semantic_search(query, frames)
-#    - Embeds the query
-#    - Compares it to all frame embeddings using cosine similarity
-#    - Returns best match with timestamp, score, and description
-
-def semantic_search(query: str, frames: list[dict]) -> dict:
+    genai.configure(api_key=api_key)
     print(f"🔍 Searching for: {query}")
+
     try:
-        query_embed = genai.embed_content(
+        q_resp = genai.embed_content(
             model="models/embedding-001",
             content=query,
             task_type="RETRIEVAL_QUERY"
-        )["embedding"]
+        )
+        query_embed = q_resp["embedding"]
     except Exception as e:
         print(f"❌ Error embedding query: {e}")
         return {}
@@ -177,11 +166,9 @@ def semantic_search(query: str, frames: list[dict]) -> dict:
     best_score = -1
 
     for frame in frames:
-        if frame.get("embedding"):
-            score = cosine_similarity(
-                [query_embed], [frame["embedding"]]
-            )[0][0]
-
+        emb = frame.get("embedding")
+        if emb is not None:
+            score = cosine_similarity([query_embed], [emb])[0][0]
             if score > best_score:
                 best_score = score
                 best_frame = frame

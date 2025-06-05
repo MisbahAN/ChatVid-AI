@@ -24,7 +24,9 @@ export default function SectionList({
    *   "01:18"   → 78
    *   "1:02:05" → 3725
    */
-  function parseTimestamp(ts: string): number {
+  function parseTimestamp(ts?: string): number {
+    if (!ts || typeof ts !== "string") return NaN;
+
     const parts = ts.split(":").map((part) => parseInt(part, 10));
     if (parts.some((n) => isNaN(n))) return NaN;
 
@@ -35,6 +37,7 @@ export default function SectionList({
       const [hh, mm, ss] = parts;
       return hh * 3600 + mm * 60 + ss;
     }
+
     return NaN;
   }
 

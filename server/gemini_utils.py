@@ -1,19 +1,14 @@
 import google.generativeai as genai
-from dotenv import load_dotenv
-import os
 import re
 import httpx
 import base64
 
-load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-gemini_model = genai.GenerativeModel("gemini-1.5-pro")
 
 def format_time(seconds: float) -> str:
     minutes = int(seconds // 60)
     secs = int(seconds % 60)
     return f"{minutes:02}:{secs:02}"
+
 
 def generate_timestamp_link(video_url: str, timestamp_str: str) -> str:
     try:
@@ -23,6 +18,7 @@ def generate_timestamp_link(video_url: str, timestamp_str: str) -> str:
     except Exception as e:
         print("❌ Error creating timestamp link:", e)
         return video_url
+
 
 def hyperlink_timestamps_in_text(answer: str, video_url: str) -> str:
     pattern = r"\b(\d{2}):(\d{2})\b"
@@ -34,16 +30,29 @@ def hyperlink_timestamps_in_text(answer: str, video_url: str) -> str:
 
     return re.sub(pattern, replacer, answer)
 
-def answer_question(transcript: list[dict], question: str, video_url: str) -> str:
+
+def answer_question(
+    transcript: list[dict],
+    question: str,
+    video_url: str,
+    api_key: str
+) -> str:
+    """
+    1) Configure Gemini with the passed api_key.
+    2) Split transcript into chunks, prompt Gemini on each chunk.
+    3) Pick best answer (most timestamps), hyperlink timestamps, return.
+    """
     if not transcript:
         return "⚠️ Sorry, this video has no transcript available. Try another video."
+
+    # 1) Configure Gemini
+    genai.configure(api_key=api_key)
 
     def format_chunk(items):
         return "\n".join(f"[{format_time(i['start'])}] {i['text']}" for i in items)
 
     def chunk_transcript(transcript, max_chars=5000):
         chunks, current_chunk, current_len = [], [], 0
-
         for item in transcript:
             line = f"[{format_time(item['start'])}] {item['text']}\n"
             if current_len + len(line) > max_chars:
@@ -51,10 +60,8 @@ def answer_question(transcript: list[dict], question: str, video_url: str) -> st
                 current_chunk, current_len = [], 0
             current_chunk.append(item)
             current_len += len(line)
-
         if current_chunk:
             chunks.append(current_chunk)
-
         return chunks
 
     chunks = chunk_transcript(transcript)
@@ -84,19 +91,27 @@ def answer_question(transcript: list[dict], question: str, video_url: str) -> st
             if timestamp_count > most_timestamps:
                 best_answer = answer
                 most_timestamps = timestamp_count
-
         except Exception as e:
             print(f"⚠️ Error answering chunk {i}: {e}")
 
     return hyperlink_timestamps_in_text(best_answer or "Sorry, I couldn't find a good answer.", video_url)
 
-async def async_analyze_image(frame_path: str, client: httpx.AsyncClient) -> str:
+
+async def async_analyze_image(
+    frame_path: str,
+    client: httpx.AsyncClient,
+    api_key: str
+) -> str:
+    """
+    Sends one frame to Gemini multimodal API to get a brief description.
+    Uses the passed api_key in the HTTP request.
+    """
     with open(frame_path, "rb") as img_file:
         image_data = base64.b64encode(img_file.read()).decode("utf-8")
 
     response = await client.post(
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
-        params={"key": os.getenv("GEMINI_API_KEY")},
+        params={"key": api_key},
         json={
             "contents": [
                 {
