@@ -120,7 +120,6 @@ ChatVid-AI/
 2. **Run the frontend development server**
    ```bash
    # Make sure you're in the client directory
-   cd client
    npm run dev
    ```
    The frontend will be available at `http://localhost:3000`
