@@ -3,13 +3,150 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 255, 255, 255;
+  --foreground-rgb: 45, 90, 61;
+  --background-rgb: 245, 247, 240;
+  --pistachio-light: rgba(159, 181, 164, 0.1);
+  --pistachio-medium: rgba(107, 155, 118, 0.3);
+  --pistachio-dark: #2d5a3d;
+  --pistachio-accent: #6b9b76;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
+}
+
+/* Enhanced scrollbar styling for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(107, 155, 118, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(145deg, rgba(107, 155, 118, 0.4), rgba(90, 138, 101, 0.4));
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(145deg, rgba(107, 155, 118, 0.6), rgba(90, 138, 101, 0.6));
+}
+
+::-webkit-scrollbar-corner {
+  background: rgba(107, 155, 118, 0.1);
+}
+
+/* Firefox scrollbar styling */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(107, 155, 118, 0.4) rgba(107, 155, 118, 0.1);
+}
+
+/* Link styling for better consistency */
+a {
+  color: var(--pistachio-accent);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+a:hover {
+  color: var(--pistachio-dark);
+  text-decoration: underline;
+}
+
+/* Selection styling */
+::selection {
+  background: rgba(107, 155, 118, 0.3);
+  color: var(--pistachio-dark);
+}
+
+::-moz-selection {
+  background: rgba(107, 155, 118, 0.3);
+  color: var(--pistachio-dark);
+}
+
+/* Focus outline for better accessibility */
+*:focus {
+  outline: 2px solid rgba(107, 155, 118, 0.5);
+  outline-offset: 2px;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Smooth transitions for all interactive elements */
+button,
+input,
+textarea,
+select {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced button reset */
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Input field improvements */
+input,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Remove default input styling on iOS */
+input[type="text"],
+input[type="password"],
+input[type="url"],
+textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Improved animations for reduced motion users */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 200, 220, 205;
+    --background-rgb: 25, 35, 28;
+  }
 }
 
 /* client/styles/chatbox.css */

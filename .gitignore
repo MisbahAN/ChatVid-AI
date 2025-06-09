@@ -55,3 +55,9 @@ server/frames/
 
 # Ignore extracted transcripts
 server/transcript.json
+
+# Ignore all video files
+*.mp4
+*.mp4.part
+server/*.mp4
+server/*.mp4.part

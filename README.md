@@ -14,13 +14,15 @@ ChatVid AI is a multimodal, Gemini-powered video analysis system that lets you i
 - 🔍 **Visual Search** – Ask queries like "Where's the red car?" and get frames + timestamps
 - 🧠 **Gemini RAG + Embeddings** – Uses Gemini's multimodal capabilities for captioning, retrieval, and generation
 - 🔐 **User-Passed API Key** – API key is provided by the user via the frontend for privacy and scalability
+- 🎨 **Elegant Pistachio Theme** – Beautiful, modern UI with smooth animations, glassmorphism effects, and responsive design
 
 ## ⚙️ Tech Stack
 
 | Layer          | Tool / Library                                       |
 | -------------- | ---------------------------------------------------- |
 | **Backend**    | Python, FastAPI, youtube-transcript-api, Gemini SDK  |
-| **Frontend**   | Next.js, TypeScript, Tailwind CSS                    |
+| **Frontend**   | Next.js, TypeScript, Tailwind CSS, Custom CSS       |
+| **UI/UX**      | Pistachio theme, Glassmorphism, Smooth animations    |
 | **LLM**        | Gemini API (text, image, video understanding)        |
 | **Embeddings** | Gemini multimodal embedding API                      |
 | **Retrieval**  | In-memory vector matching (cosine similarity, no DB) |
@@ -39,17 +41,17 @@ ChatVid-AI/
 ├── client/                   # Next.js frontend (TypeScript + Tailwind)
 │   ├── app/                  # Next.js App Router pages
 │   │   ├── layout.tsx        # Root layout with metadata and global styles
-│   │   ├── page.tsx          # Home page: YouTube URL + API Key input
+│   │   ├── page.tsx          # Home page with pistachio theme: YouTube URL + API Key input
 │   │   └── chat/             # Chat interface route
-│   │       └── page.tsx      # Video player + chat interface
+│   │       └── page.tsx      # Video player + multi-panel chat interface with pistachio theme
 │   ├── components/           # Reusable React components
-│   │   ├── ChatBox.tsx       # Chat interface with markdown support and visual search
-│   │   ├── SectionList.tsx   # Timestamped video sections
+│   │   ├── ChatBox.tsx       # Multi-panel chat interface with pistachio theme, visual search, and animations
+│   │   ├── SectionList.tsx   # Timestamped video sections with hover effects and inline styling
 │   │   ├── VideoPlayer.tsx   # YouTube player component
 │   │   └── Loader.tsx        # Loading state component
 │   ├── lib/                  # Utility functions and API clients
-│   ├── public/               # Static assets
-│   ├── styles/               # Global styles and Tailwind config
+│   ├── public/               # Static assets (logos, architecture diagrams)
+│   ├── styles/               # Global styles with pistachio theme variables and custom effects
 │   ├── next-env.d.ts         # TypeScript environment declaration file
 │   ├── next.config.js        # Next.js configuration
 │   ├── package-lock.json     # Dependency lock file
@@ -142,13 +144,13 @@ ChatVid-AI/
   - `page.tsx`: Home page with YouTube URL and API key input
   - `chat/page.tsx`: Video player and chat interface
 - `components/`: Reusable React components
-  - `ChatBox.tsx`: Chat interface with markdown support and visual search
-  - `SectionList.tsx`: Displays timestamped video sections
+  - `ChatBox.tsx`: Multi-panel chat interface with pistachio theme, visual search, Q&A chat, and smooth animations
+  - `SectionList.tsx`: Displays timestamped video sections with hover effects and inline timestamp styling
   - `VideoPlayer.tsx`: YouTube player component
   - `Loader.tsx`: Loading state component
-- `lib/`: Utility functions and API clients
-- `public/`: Static assets
-- `styles/`: Global styles and Tailwind configuration
+- `lib/`: Utility functions and API clients for backend communication
+- `public/`: Static assets including logos and architecture diagrams
+- `styles/`: Global styles with pistachio theme variables, glassmorphism effects, and custom scrollbars
 - Configuration files:
   - `next-env.d.ts`: TypeScript environment declaration file
   - `next.config.js`: Next.js configuration
@@ -179,15 +181,17 @@ ChatVid-AI/
 
 1. **URL Input** (`/`):
 
-   - YouTube URL input form
-   - Gemini API key setup (stored in localStorage)
+   - Elegant pistachio-themed YouTube URL input form with glassmorphism effects
+   - Gemini API key setup with floating animations (stored in localStorage)
+   - Smooth transitions and hover effects
    - Redirects to chat page with video ID
 
 2. **Chat Interface** (`/chat`):
-   - Embedded YouTube player
-   - Section summaries with timestamps
-   - Chat input for video questions
-   - Visual search input for frame queries
+   - Embedded YouTube player with responsive design
+   - Three-panel layout with pistachio gradient backgrounds
+   - Section summaries with animated timestamps and hover effects
+   - Chat input for video questions with smooth interactions
+   - Visual search input for frame queries with elegant styling
 
 ## 🗺️ Roadmap
 
@@ -208,7 +212,7 @@ ChatVid-AI/
 
 ### 🧪 Future Enhancements
 
-- [ ] Crazy good UI Design
+- [x] Crazy good UI Design (Pistachio theme with glassmorphism completed)
 - [ ] Deploy on vercel to misbahan.com
 - [ ] Loading states and error handling
 - [ ] Chat history persistence
