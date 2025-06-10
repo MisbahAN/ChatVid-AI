@@ -48,7 +48,6 @@ ChatVid-AI/
 │   │   ├── ChatBox.tsx       # Multi-panel chat interface with pistachio theme, visual search, and animations
 │   │   ├── SectionList.tsx   # Timestamped video sections with hover effects and inline styling
 │   │   ├── VideoPlayer.tsx   # YouTube player component
-│   │   └── Loader.tsx        # Loading state component
 │   ├── lib/                  # Utility functions and API clients
 │   ├── public/               # Static assets (logos, architecture diagrams)
 │   ├── styles/               # Global styles with pistachio theme variables and custom effects
@@ -147,7 +146,6 @@ ChatVid-AI/
   - `ChatBox.tsx`: Multi-panel chat interface with pistachio theme, visual search, Q&A chat, and smooth animations
   - `SectionList.tsx`: Displays timestamped video sections with hover effects and inline timestamp styling
   - `VideoPlayer.tsx`: YouTube player component
-  - `Loader.tsx`: Loading state component
 - `lib/`: Utility functions and API clients for backend communication
 - `public/`: Static assets including logos and architecture diagrams
 - `styles/`: Global styles with pistachio theme variables, glassmorphism effects, and custom scrollbars
