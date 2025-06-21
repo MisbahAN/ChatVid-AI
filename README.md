@@ -6,6 +6,14 @@
 
 ChatVid AI is a multimodal, Gemini-powered video analysis system that lets you interact with YouTube videos like never before. Paste a link, ask questions, get timestamped breakdowns, and even search for visual content within the video — all using Google's Gemini API and multimodal RAG techniques.
 
+## 📺 Watch Demo
+
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=sXbELuNLJMM" target="_blank">
+    <img src="https://img.youtube.com/vi/sXbELuNLJMM/0.jpg" alt="Watch Demo" width="560"/>
+  </a>
+</p>
+
 ## 🌟 Features
 
 - 🔗 **Paste YouTube Link** – Upload any public YouTube URL
